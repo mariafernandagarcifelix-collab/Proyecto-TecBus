@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mi Ruta - TECNM Guasave</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/student.css" />
+  </head>
+
+  <body id="student-body">
+    <header>
+      <div class="menu-icon"><i class="fas fa-bars"></i></div>
+      <div class="header-title">
+        <h1>TECNM Guasave</h1>
+        <p>Transporte Estudiantil</p>
+      </div>
+      <div class="profile-dropdown">
+        <i class="fas fa-user-circle profile-icon" id="profile-toggle"></i>
+
+        <div class="dropdown-content" id="profile-menu">
+          <div class="dropdown-header">
+            Hola, <span id="user-name-display">Usuario</span>
+          </div>
+          <a href="#" id="logout-button">
+            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div id="map-container">
+      <div id="map"></div>
+
+      <div class="map-controls card-panel">
+        <label for="camion-selector" class="control-label"
+          >🚚 Selecciona tu Ruta</label
+        >
+        <select id="camion-selector" class="custom-select">
+          <option value="">Elige una ruta...</option>
+          <option value="A-101">Camión A-101 (Ruta Centro)</option>
+          <option value="B-205">Camión B-205 (Ruta Colonia)</option>
+          <option value="C-303">Camión C-303 (Ruta Periférico)</option>
+        </select>
+      </div>
+
+      <div class="action-panel card-panel">
+        <button id="btn-estoy-aqui" class="btn btn-primary-lg">
+          <i class="fas fa-location-arrow"></i> Notificar mi Parada
+        </button>
+        <button id="btn-ver-historial" class="btn btn-secondary-sm">
+          <i class="fas fa-history"></i> Ver Historial de Viajes
+        </button>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <script src="assets/js/student_map.js"></script>
+  </body>
+</html>

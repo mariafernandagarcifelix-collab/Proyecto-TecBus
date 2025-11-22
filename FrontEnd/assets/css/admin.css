@@ -1,0 +1,583 @@
+/*
+ * ============================================
+ * Panel de Administración (Mobile First)
+ * ============================================
+ */
+
+/* ----------------------------------------------------- */
+/* 2. Layout (Mobile First) */
+/* ----------------------------------------------------- */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* --- BARRA LATERAL (Oculta en Móvil) --- */
+.sidebar {
+  width: 260px;
+  background-color: var(--color-superficie);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease-out;
+  z-index: 3000;
+  box-shadow: 3px 0 15px rgba(0, 0, 0, 0.5);
+
+  /* Estilos Mobile */
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  transform: translateX(-100%);
+}
+.sidebar.open {
+  transform: translateX(0); /* JS mostrará esto */
+}
+
+.logo-area {
+  padding: 25px 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-secundario);
+}
+.logo-icon {
+  font-size: 2.5rem;
+  color: var(--color-primario);
+  margin-bottom: 10px;
+}
+.logo-area p {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.logo-area .subtitle {
+  font-size: 0.9rem;
+  color: var(--color-texto-gris);
+}
+
+.main-nav {
+  flex-grow: 1;
+  padding: 20px 0;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 15px 25px;
+  color: var(--color-texto-gris);
+  transition: all 0.3s;
+  border-left: 5px solid transparent;
+}
+.nav-item i {
+  margin-right: 15px;
+  font-size: 1.1rem;
+  width: 20px;
+  text-align: center;
+}
+.nav-item:hover {
+  background-color: #2a2a2a;
+  color: var(--color-texto-claro);
+}
+.nav-item.active {
+  background-color: #2a2a2a;
+  color: var(--color-primario);
+  border-left-color: var(--color-primario);
+  font-weight: 500;
+}
+.nav-item.active i {
+  color: var(--color-primario);
+}
+
+.sidebar-footer {
+  padding: 20px 0;
+  border-top: 1px solid var(--color-secundario);
+}
+
+/* --- ÁREA DE CONTENIDO (Mobile First) --- */
+.content-area {
+  flex-grow: 1;
+  padding: 20px 15px; /* Padding reducido para móvil */
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-fondo);
+  width: 100%; /* Ocupa todo el ancho en móvil */
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--color-secundario);
+  margin-bottom: 20px;
+  flex-wrap: wrap; /* Móvil: permite que se reordene */
+}
+
+.menu-toggle {
+  display: block; /* Visible en móvil */
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-primario);
+}
+
+.header-title-admin {
+  /* Móvil: Centrado y debajo */
+  width: 100%;
+  order: 2;
+  text-align: center;
+  margin-top: 10px;
+}
+.header-title-admin h2 {
+  font-size: 1.5rem; /* Más pequeño en móvil */
+  margin: 0;
+}
+.header-title-admin p {
+  font-size: 0.9rem;
+  color: var(--color-texto-gris);
+  margin: 0;
+}
+
+.header-info {
+  /* Móvil: Arriba y estirado */
+  order: 1;
+  width: 100%;
+  justify-content: space-between;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 0.9rem;
+  color: var(--color-texto-gris);
+}
+.profile-icon {
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: var(--color-primario);
+}
+
+/* ----------------------------------------------------- */
+/* 3. Secciones Dashboard (Mobile First) */
+/* ----------------------------------------------------- */
+.dashboard-section {
+  display: none;
+}
+.dashboard-section.active {
+  display: block;
+  animation: fadeIn 0.5s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Tarjetas KPI (2 columnas en móvil) --- */
+.kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columnas en móvil */
+  gap: 15px; /* Espacio reducido */
+  margin-bottom: 20px;
+}
+.card {
+  background-color: var(--color-superficie);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-secundario);
+}
+.card-icon {
+  font-size: 1.8rem; /* Más pequeño */
+  color: var(--color-primario);
+  margin-bottom: 10px;
+}
+.card.alert-card .card-icon {
+  color: var(--color-error);
+  animation: pulse 1.5s infinite;
+}
+.card-title {
+  font-size: 0.8rem;
+  color: var(--color-texto-gris);
+  margin-bottom: 5px;
+}
+.card-value {
+  font-size: 2rem; /* Más pequeño */
+  font-weight: 600;
+  color: var(--color-texto-claro);
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* --- Contenedor del Mapa (Móvil) --- */
+.map-flotilla-container {
+  background-color: var(--color-superficie);
+  padding: 15px; /* Menos padding */
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-secundario);
+}
+.map-flotilla-container h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.1rem; /* Más pequeño */
+  color: var(--color-texto-claro);
+}
+.full-map {
+  height: 400px; /* Menos altura en móvil */
+  width: 100%;
+  border-radius: 8px;
+  background-color: #333;
+}
+
+/* ----------------------------------------------------- */
+/* 4. Componentes (Mobile First) */
+/* ----------------------------------------------------- */
+
+/* --- Formularios (1 columna en móvil) --- */
+.form-container,
+.table-container {
+  background-color: var(--color-superficie);
+  padding: 20px 15px; /* Padding reducido */
+  border-radius: 12px;
+  border: 1px solid var(--color-secundario);
+  margin-bottom: 30px;
+}
+.form-container h3,
+.table-container h3 {
+  margin-top: 0;
+  font-size: 1.2rem; /* Más pequeño */
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* 1 columna en móvil */
+  gap: 20px;
+  margin-bottom: 25px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--color-texto-gris);
+  margin-bottom: 8px;
+}
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  background-color: #2a2a2a;
+  color: var(--color-texto-claro);
+  border: 1px solid var(--color-secundario);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: "Poppins", sans-serif;
+}
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--color-primario);
+}
+
+/* --- Botones --- */
+.btn {
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-align: center;
+  padding: 12px 20px; /* Padding táctil más grande */
+  font-size: 0.95rem;
+}
+.btn i {
+  margin-right: 8px;
+}
+.btn-primary {
+  background-color: var(--color-primario);
+  color: var(--color-texto-claro);
+}
+.btn-primary:hover {
+  background-color: var(--color-hover);
+}
+.btn-danger {
+  background-color: var(--color-error);
+  color: var(--color-texto-claro);
+}
+.btn-danger:hover {
+  background-color: var(--color-error-hover);
+}
+.btn-secondary {
+  background-color: var(--color-secundario);
+  color: var(--color-texto-claro);
+}
+.btn-secondary:hover {
+  background-color: #555;
+}
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+/* --- Tablas (Scroll horizontal en móvil) --- */
+.table-container {
+  overflow-x: auto; /* APLICA SCROLL AL CONTENEDOR */
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* FUERZA EL SCROLL */
+}
+.data-table th,
+.data-table td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-secundario);
+}
+.data-table th {
+  font-size: 0.9rem;
+  color: var(--color-texto-gris);
+  text-transform: uppercase;
+}
+.data-table td {
+  font-size: 0.95rem;
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+.data-table tr:hover {
+  background-color: #2a2a2a;
+}
+.data-table .alert-row-danger {
+  background-color: rgba(220, 53, 69, 0.1);
+  font-weight: 500;
+}
+.data-table td:last-child {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- Insignias (Badges) --- */
+.badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.badge-conductor {
+  background-color: rgba(0, 123, 255, 0.2);
+  color: var(--color-primario);
+}
+.badge-admin {
+  background-color: rgba(40, 167, 69, 0.2);
+  color: var(--color-exito);
+}
+
+/* ----------------------------------------------------- */
+/* 5. Responsividad (Móvil) - Backdrop */
+/* ----------------------------------------------------- */
+.backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 2999;
+}
+.backdrop.open {
+  display: block;
+}
+
+/* ----------------------------------------------------- */
+/* 6. Media Query (Estilos para Desktop) */
+/* ----------------------------------------------------- */
+@media (min-width: 992px) {
+  /* --- BARRA LATERAL (Visible en Desktop) --- */
+  .sidebar {
+    position: static; /* Vuelve a ser parte del flujo */
+    height: auto;
+    transform: translateX(0);
+  }
+  .menu-toggle {
+    display: none; /* Oculta hamburguesa */
+  }
+
+  /* --- ÁREA DE CONTENIDO (Desktop) --- */
+  .content-area {
+    padding: 30px 40px; /* Padding original */
+  }
+  .admin-header {
+    flex-wrap: nowrap; /* Evita que se reordene */
+  }
+  .header-title-admin {
+    width: auto;
+    order: 0;
+    text-align: left;
+    margin-top: 0;
+  }
+  .header-title-admin h2 {
+    font-size: 1.7rem;
+  }
+  .header-info {
+    order: 0;
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  /* --- Tarjetas KPI (Desktop) --- */
+  .kpi-cards {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px; /* Espacio original */
+    margin-bottom: 30px;
+  }
+  .card {
+    padding: 20px 25px;
+  }
+  .card-icon {
+    font-size: 2rem;
+  }
+  .card-title {
+    font-size: 0.9rem;
+  }
+  .card-value {
+    font-size: 2.2rem;
+  }
+
+  /* --- Contenedor del Mapa (Desktop) --- */
+  .map-flotilla-container {
+    padding: 20px;
+  }
+  .map-flotilla-container h3 {
+    font-size: 1.2rem;
+  }
+  .full-map {
+    height: 550px; /* Altura original */
+  }
+
+  /* --- Componentes (Desktop) --- */
+  .form-container,
+  .table-container {
+    padding: 25px 30px; /* Padding original */
+  }
+  .form-container h3,
+  .table-container h3 {
+    font-size: 1.3rem;
+  }
+  .form-grid {
+    /* Vuelve a 2+ columnas en desktop */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  .btn {
+    padding: 10px 20px; /* Padding original */
+  }
+
+  /* --- Tablas (Desktop) --- */
+  .table-container {
+    overflow-x: visible; /* Quita el scroll */
+  }
+  .data-table {
+    min-width: 100%; /* Ancho normal */
+  }
+}
+
+/* ================================== */
+/* 7. Estilos del Modal de Edición    */
+/* (Basado en tu driver.css)          */
+/* ================================== */
+
+.modal {
+  display: none; /* Oculto por defecto */
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+/* Esta clase se usará con JS para mostrarlo */
+.modal.modal-visible {
+  display: flex;
+}
+
+.modal-content {
+  background-color: var(--color-superficie);
+  padding: 20px 25px;
+  border: 1px solid var(--color-secundario);
+  width: 100%;
+  max-width: 500px;
+  border-radius: 12px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  color: var(--color-texto-claro);
+}
+.modal-content p {
+  color: var(--color-texto-gris);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+.close-button {
+  color: var(--color-texto-gris);
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+.close-button:hover {
+  color: var(--color-texto-claro);
+}
+
+/* Animación de entrada */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* --- Estilos del Modal de Mapa de Rutas --- */
+.map-modal-content {
+  max-width: 900px; /* Un modal más ancho para el mapa */
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#ruta-map-editor {
+  height: 100%; /* El mapa ocupa todo el espacio */
+  width: 100%;
+  flex-grow: 1;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.map-modal-content .form-group {
+  margin-bottom: 15px;
+}

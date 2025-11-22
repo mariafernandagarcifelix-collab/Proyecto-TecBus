@@ -1,0 +1,47 @@
+/* 1. Importación de Fuente */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+/* 2. Variables de Diseño */
+:root {
+  --color-fondo: #0a0a0a;
+  --color-superficie: #1f1f1f;
+  --color-primario: #007bff;
+  --color-secundario: #404040;
+  --color-texto-claro: #f8f9fa;
+  --color-texto-gris: #adb5bd;
+  --color-hover: #0069d9;
+  --color-exito: #28a745;
+  --color-error: #dc3545;
+  --color-error-hover: #c82333;
+}
+
+/* 3. Estilos Base Globales */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: var(--color-fondo);
+  color: var(--color-texto-claro);
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-primario);
+}
+/*
+ * Override para que el Modo Oscuro de Bootstrap
+ * use nuestras variables de color personalizadas.
+ */
+[data-bs-theme="dark"] body {
+  background-color: var(--color-fondo);
+}
+
+[data-bs-theme="dark"] .card {
+  background-color: var(--color-superficie);
+  border-color: var(--color-secundario);
+}

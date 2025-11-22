@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de Conductor - TECNM Guasave</title>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/driver.css" />
+  </head>
+
+  <body id="driver-body">
+    <header>
+      <div class="menu-icon"><i class="fas fa-bars"></i></div>
+      <div class="header-title">
+        <h1>Panel de Conductor</h1>
+        <p>Camión A-101</p>
+      </div>
+      <div class="profile-dropdown">
+        <i class="fas fa-user-circle profile-icon" id="profile-toggle"></i>
+
+        <div class="dropdown-content" id="profile-menu">
+          <div class="dropdown-header">
+            Hola, <span id="user-name-display">Usuario</span>
+          </div>
+          <a href="#" id="logout-button">
+            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div id="map-container">
+      <div id="map"></div>
+
+      <div class="driver-info-panel card-panel">
+        <div class="route-status">
+          <span class="route-name">Ruta 1 - Centro</span>
+          <span class="status-indicator">● En Servicio</span>
+        </div>
+        <div class="students-count">
+          En espera: <span id="espera-count">3</span>
+        </div>
+      </div>
+
+      <div class="action-panel card-panel">
+        <button id="btn-reporte-incidente" class="btn btn-error-lg">
+          <i class="fas fa-exclamation-triangle"></i> Reportar Incidente
+        </button>
+      </div>
+
+      <div id="incident-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <h2>Reporte de Incidente</h2>
+          <p>Selecciona el tipo de retraso y envíalo a los estudiantes.</p>
+
+          <select id="incident-type" class="custom-select">
+            <option value="">-- Elige un tipo --</option>
+            <option value="Trafico">Tráfico Pesado</option>
+            <option value="Accidente">Accidente en Vía</option>
+            <option value="Averia">Avería del Vehículo</option>
+            <option value="Otro">Otro Retraso</option>
+          </select>
+
+          <textarea
+            id="incident-details"
+            placeholder="Detalles adicionales... (Opcional)"
+          ></textarea>
+
+          <button id="send-incident" class="btn btn-error-lg">
+            Enviar Alerta
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <script src="assets/js/driver_map.js"></script>
+  </body>
+</html>
