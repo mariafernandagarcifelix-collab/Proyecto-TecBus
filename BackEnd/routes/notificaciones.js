@@ -3,107 +3,95 @@
 const express = require("express");
 const router = express.Router();
 const webpush = require("web-push");
-const Notificacion = require("../models/Notificacion");
-const User = require("../models/User"); // ¡Importante!
-const AnaliticaPrediccion = require("../models/AnaliticaPrediccion"); // ¡Importante!
-const { protect, adminOnly } = require("../middleware/authMiddleware");
+const User = require("../models/User");
+const Notificacion = require("../models/Notificacion"); // Para guardar historial
+const { protect } = require("../middleware/authMiddleware");
 
-// Configura web-push con tus llaves del .env
+// 1. Configurar web-push con tus llaves del .env
 webpush.setVapidDetails(
-  "mailto:l2225010050@guasave.tecnm.mx", // Un email de contacto
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
+  process.env.MAILTO || "mailto:admin@example.com",
+  process.env.PUBLIC_VAPID_KEY,
+  process.env.PRIVATE_VAPID_KEY
 );
 
-// --- RUTA 1: Obtener el Historial de Alertas (para el Admin) ---
-router.get("/", protect, adminOnly, async (req, res) => {
-  try {
-    const notificaciones = await Notificacion.aggregate([
-      { $match: { tipo: "incidente" } },
-      { $sort: { createdAt: -1 } },
-      {
-        $lookup: {
-          from: "camions",
-          localField: "relacionCon.id",
-          foreignField: "_id",
-          as: "infoCamion",
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          titulo: 1,
-          mensaje: 1,
-          createdAt: 1,
-          camionUnidad: { $arrayElemAt: ["$infoCamion.numeroUnidad", 0] },
-        },
-      },
-      { $limit: 100 },
-    ]);
-    res.json(notificaciones);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error del servidor" });
-  }
-});
-
-// --- RUTA 2: Guardar la Suscripción Push (del Estudiante) ---
+// --- RUTA 1: SUSCRIBIRSE (POST /api/notificaciones/subscribe) ---
 router.post("/subscribe", protect, async (req, res) => {
   const subscription = req.body;
-  const userId = req.user.id;
+  const userId = req.user._id;
 
   try {
-    await User.findByIdAndUpdate(userId, {
-      "estudiante.pushSubscription": subscription,
-    });
-    res.status(201).json({ message: "Suscripción guardada" });
+    // Guardamos la suscripción en el Usuario
+    await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
+    
+    console.log(`✅ Usuario ${req.user.nombre} suscrito a notificaciones.`);
+    res.status(201).json({ message: "Suscripción guardada correctamente" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error al guardar suscripción" });
+    console.error("Error guardando suscripción:", error);
+    res.status(500).json({ message: "Error al suscribirse" });
   }
 });
 
-// --- RUTA 3: Disparar la Notificación Predictiva (del Estudiante) ---
+// --- RUTA 2: PRUEBA DE PREDICCIÓN (GET /api/notificaciones/mi-prediccion) ---
+// Esta la llama el student_map.js al cargar para probar
 router.get("/mi-prediccion", protect, async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user._id;
 
   try {
-    // 1. Busca la predicción del usuario
-    const prediccion = await AnaliticaPrediccion.findById(userId);
-    if (!prediccion) {
-      // No es un error, solo que no hay datos
-      return res.json({ message: "Aún no hay predicciones para ti." });
-    }
-
-    // 2. Busca la "dirección" (suscripción) del usuario
+    
     const user = await User.findById(userId);
-    if (!user || !user.estudiante || !user.estudiante.pushSubscription) {
-      return res
-        .status(404)
-        .json({ message: "El usuario no está suscrito a notificaciones." });
+    if (!user || !user.pushSubscription) {
+      return res.status(404).json({ message: "No tienes suscripción activa" });
     }
-    const subscription = user.estudiante.pushSubscription;
-
-    // 3. Prepara el mensaje
+    
+    // Creamos el mensaje (Payload)
     const payload = JSON.stringify({
-      title: "¡Tu Ruta de TecBus!",
-      body: `¡Hola ${
-        user.nombre.split(" ")[0]
-      }! Vemos que usualmente tomas la ruta "${
-        prediccion.prediccion.ruta
-      }" a las ${prediccion.prediccion.hora}. ¡Que tengas un buen viaje!`,
-      icon: "httpsE://i.imgur.com/gL982gC.png", // Ícono de ejemplo
+      title: "🚍 Predicción TecBus",
+      body: "Hola " + user.nombre.split(" ")[0] + ", tu camión habitual llegará en 5 mins (Prueba).",
+      icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png" // Icono de bus
     });
 
-    // 4. ¡Envía la notificación!
-    await webpush.sendNotification(subscription, payload);
-
-    res.json({ message: "Notificación de predicción enviada!" });
+    // Enviamos la notificación
+    await webpush.sendNotification(user.pushSubscription, payload);
+    
+    res.json({ message: "Notificación de prueba enviada" });
   } catch (error) {
-    // Esto puede pasar si la suscripción (la "dirección") ha expirado
-    console.error("Error al enviar push notification:", error);
-    res.status(500).json({ message: "Error al enviar la notificación" });
+    console.error("Error enviando push:", error);
+    res.status(500).json({ message: "Error al enviar notificación" });
   }
 });
+
+// --- RUTA 3: ENVIAR ALERTA GENERAL (POST /api/notificaciones/send-all) ---
+// Para que el admin envíe avisos manuales
+router.post("/send-all", protect, async (req, res) => {
+  // Validar que sea admin... (puedes agregar adminOnly si quieres)
+  const { titulo, mensaje } = req.body;
+
+  try {
+    // 1. Guardar en historial
+    await Notificacion.create({ 
+        titulo, 
+        mensaje, 
+        tipo: 'general', 
+        prioridad: 'media' 
+    });
+
+    // 2. Buscar usuarios con suscripción
+    const users = await User.find({ pushSubscription: { $ne: null } });
+
+    // 3. Enviar a todos
+    const notificationPromises = users.map(user => {
+      const payload = JSON.stringify({ title: titulo, body: mensaje });
+      return webpush.sendNotification(user.pushSubscription, payload)
+        .catch(err => console.error(`Fallo envío a ${user.nombre}:`, err));
+    });
+
+    await Promise.all(notificationPromises);
+    res.json({ message: `Notificación enviada a ${users.length} usuarios` });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error masivo" });
+  }
+});
+
 
 module.exports = router;

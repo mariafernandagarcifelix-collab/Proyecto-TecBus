@@ -100,4 +100,57 @@ router.delete("/:id", protect, adminOnly, async (req, res) => {
   }
 });
 
+// --- RUTA ESPECIAL PARA ESP32 (HARDWARE) ---
+// PUT /api/camiones/update-location
+// Protegida: NO (para que el ESP32 pueda entrar sin login)
+router.put("/update-location", async (req, res) => {
+  try {
+    // 1. Obtenemos los datos que manda el ESP32
+    // Nota: El ESP32 manda "busId", "lat", "lng", "speed"
+    const { busId, lat, lng, speed } = req.body;
+
+    console.log(`📡 Datos recibidos del ESP32 -> ID: ${busId}, Lat: ${lat}, Lng: ${lng}`);
+
+    // 2. Buscamos el camión por su 'numeroUnidad' (ej: 'TEC-01')
+    // Usamos findOneAndUpdate para actualizarlo atómicamente
+    const camion = await Camion.findOneAndUpdate(
+      { numeroUnidad: busId }, // Buscamos por el nombre "TEC-01"
+      {
+        ubicacionActual: {
+          type: "Point",
+          coordinates: [lng, lat], // GeoJSON pide [longitud, latitud]
+        },
+        velocidad: speed,
+        ultimaActualizacion: new Date(),
+      },
+      { new: true } // Para que nos devuelva el camión ya actualizado
+    );
+
+    if (!camion) {
+      console.log("⚠️ Camión no encontrado en la DB");
+      return res.status(404).json({ message: "Camión no encontrado con ese ID" });
+    }
+
+    // 3. ¡MAGIA DE REAL-TIME! Emitimos el evento a los mapas web
+    // Recuperamos el objeto 'io' que guardamos en server.js
+    const io = req.app.get("io");
+    
+    if (io) {
+      io.emit("locationUpdate", {
+        camionId: camion._id,       // ID de Mongo
+        numeroUnidad: camion.numeroUnidad, // ID Humano (TEC-01)
+        location: { lat, lng },      // Coordenadas para Leaflet
+        velocidad: speed
+      });
+      console.log("✅ Ubicación emitida vía Socket.IO");
+    }
+
+    res.status(200).send("Ubicacion actualizada");
+
+  } catch (error) {
+    console.error("❌ Error actualizando ubicación:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;

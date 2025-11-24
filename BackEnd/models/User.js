@@ -1,6 +1,7 @@
 // backend/models/User.js
 
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Definimos los sub-documentos que especificaste en tu PDF
 const estudianteSchema = new mongoose.Schema({
@@ -51,12 +52,15 @@ const userSchema = new mongoose.Schema({
         enum: ['activo', 'inactivo', 'pendiente'], // Tu diseño
         default: 'activo'
     },
-    
+    pushSubscription: {
+        type: Object, // Guardaremos el objeto JSON que nos da el navegador
+        default: null
+    },
     // Aquí incluimos los campos específicos según el tipo de usuario
     estudiante: estudianteSchema,
     conductor: conductorSchema,
     administrador: administradorSchema,
-
+    
     // Mongoose maneja la 'fechaRegistro' y 'ultimoAcceso' automáticamente con 'timestamps'
 }, {
     timestamps: true // Esto crea automáticamente 'createdAt' (fechaRegistro) y 'updatedAt' (ultimoAcceso)

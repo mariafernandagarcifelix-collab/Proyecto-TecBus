@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           // ¡AQUÍ ESTÁ LA NUEVA LÓGICA DE CONVERSIÓN!
           const vapidPublicKey =
-            "BB_iYlGYuIbXOGWJH6NZADC0WvYClAJOGAjcjTMj1QrpOhXsiey5sZMzuAj8xGK7vBLyuOGbUQ4praEvgN9cUHQ";
+            "BB2W0pmQXVhTWikH1YxYYJb2hMGjqU5aAechud7OzKxJiKH9-8_jWnygraHnh7WzlpuwwXWmLDUI65eosU6cZSs";
           const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey); // Usamos la función de ayuda
 
           subscription = await readySwReg.pushManager.subscribe({
