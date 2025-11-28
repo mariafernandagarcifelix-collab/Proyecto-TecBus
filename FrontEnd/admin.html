@@ -15,6 +15,18 @@
     />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/admin.css" />
+    <script>
+      // Esta constante usa la IP de la laptop cuando el navegador la usa,
+      // y usa localhost cuando la IP es 127.0.0.1
+      const BACKEND_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+        ? "http://localhost:5000"
+        : "http://${location.hostname}:5000";
+
+      // La URL para Socket.IO es el host (sin el puerto)
+      const SOCKET_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+        ? "http://localhost:5000"
+        : "http://${location.hostname}:5000";
+    </script>
   </head>
   <body>
     <div class="admin-layout">
@@ -272,13 +284,19 @@
                 <div class="form-group">
                   <label for="horario-dia">Día de la Semana</label>
                   <select id="horario-dia" required>
-                    <option value="lunes">Lunes</option>
-                    <option value="martes">Martes</option>
-                    <option value="miercoles">Miércoles</option>
-                    <option value="jueves">Jueves</option>
-                    <option value="viernes">Viernes</option>
-                    <option value="sabado">Sábado</option>
-                    <option value="domingo">Domingo</option>
+                    <option value="">Selecciona...</option>
+                    <option value="Lunes-Viernes">📅 Lunes a Viernes</option>
+                    <option value="Diario">
+                      📆 Todos los días (Lunes a Domingo)
+                    </option>
+                    <option disabled>──────────</option>
+                    <option value="Lunes">Lunes</option>
+                    <option value="Martes">Martes</option>
+                    <option value="Miércoles">Miércoles</option>
+                    <option value="Jueves">Jueves</option>
+                    <option value="Viernes">Viernes</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -342,13 +360,16 @@
         <section id="configuracion" class="dashboard-section">
           <div class="form-container">
             <h3>Configuración del Sistema</h3>
-            <div class="form-group">
-              <label for="setting-horario">Horario de Servicio</label>
-              <input type="text" id="setting-horario" value="06:00 - 22:00" />
-            </div>
-            <div class="form-group">
-              <label for="setting-email">Correo para Notificaciones</label>
-              <input type="email" id="setting-email" value="admin@tecnm.mx" />
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="setting-horario">Horario de Servicio</label>
+                <input type="text" id="setting-horario" value="06:00 - 22:00" />
+              </div>
+              <div class="form-group">
+                <label for="setting-email">Correo para Notificaciones</label>
+                <input type="email" id="setting-email" value="admin@tecnm.mx" />
+              </div>
             </div>
             <button class="btn btn-primary">
               <i class="fas fa-save"></i> Guardar Cambios
@@ -428,6 +449,54 @@
             </div>
             <button type="submit" class="btn btn-primary" style="width: 100%">
               Guardar Cambios
+            </button>
+          </form>
+        </div>
+      </div>
+      <div id="modal-editar-horario" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <h2>Editar Horario</h2>
+          <p>Modifica la hora de salida para este turno.</p>
+
+          <form id="form-editar-horario">
+            <input type="hidden" id="edit-horario-id" />
+
+            <div class="form-group">
+              <label>Ruta Asignada</label>
+              <select id="edit-horario-ruta" required></select>
+            </div>
+
+            <div class="form-group">
+              <label>Día</label>
+              <select id="edit-horario-dia" required>
+                <option value="lunes">Lunes</option>
+                <option value="martes">Martes</option>
+                <option value="miercoles">Miércoles</option>
+                <option value="jueves">Jueves</option>
+                <option value="viernes">Viernes</option>
+                <option value="sabado">Sábado</option>
+                <option value="domingo">Domingo</option>
+              </select>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Hora de Salida</label>
+                <input type="time" id="edit-horario-salida" required />
+              </div>
+              <div class="form-group">
+                <label>Llegada (Opcional)</label>
+                <input type="time" id="edit-horario-llegada" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              style="width: 100%; margin-top: 15px"
+            >
+              <i class="fas fa-save"></i> Guardar Cambios
             </button>
           </form>
         </div>

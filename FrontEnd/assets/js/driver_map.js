@@ -1,7 +1,6 @@
 // frontend/assets/js/driver_map.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. VERIFICACIÓN DE SEGURIDAD ---
   const token = localStorage.getItem("tecbus_token");
   const userString = localStorage.getItem("tecbus_user");
 
@@ -16,20 +15,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // --- 2. CONFIGURACIÓN INICIAL ---
   const initialLat = 25.567;
   const initialLng = -108.473;
   const initialZoom = 13;
 
-  // ¡NUEVO! Esta variable se llenará dinámicamente
   let MI_CAMION_ID = null;
 
-  const socket = io("http://localhost:5000");
+  // CAMBIO: Socket URL dinámico
+  const socket = io(SOCKET_URL);
   socket.on("connect", () => {
     console.log("🔌 Conectado al servidor de sockets con ID:", socket.id);
   });
 
-  // --- 3. INICIALIZACIÓN DEL MAPA ---
   const map = L.map("map").setView([initialLat, initialLng], initialZoom);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     attribution: "&copy; OpenStreetMap &copy; CARTO",
@@ -48,16 +45,16 @@ document.addEventListener("DOMContentLoaded", () => {
     .bindPopup("Tu ubicación")
     .openPopup();
 
-  // --- ¡NUEVO! FUNCIÓN PARA OBTENER EL CAMIÓN ASIGNADO ---
   async function getCamionAsignado() {
     try {
+      // CAMBIO: BACKEND_URL dinámico
       const response = await fetch(
-        "http://localhost:5000/api/users/mi-camion",
+        BACKEND_URL + "/api/users/mi-camion",
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // ¡Usamos el token para identificarnos!
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -68,19 +65,15 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(data.message);
       }
 
-      // ¡ÉXITO! Guardamos el ID del camión
       MI_CAMION_ID = data.camionId;
       console.log(`Camión asignado: ${MI_CAMION_ID}`);
-      // Ahora que tenemos el ID, iniciamos la geolocalización
       iniciarGeolocalizacion();
     } catch (error) {
       console.error(error);
       alert(`Error: ${error.message}`);
-      // Si no podemos obtener un camión, no tiene sentido transmitir
     }
   }
 
-  // --- 4. LÓGICA DE GEOLOCALIZACIÓN (EL EMISOR) ---
   function iniciarGeolocalizacion() {
     if ("geolocation" in navigator) {
       console.log("Iniciando geolocalización...");
@@ -95,9 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
           driverMarker.setLatLng(newPos);
           map.panTo(newPos);
 
-          // ¡"Grita" la ubicación al servidor!
           if (MI_CAMION_ID) {
-            // Solo si tenemos un ID
             socket.emit("driverLocationUpdate", {
               camionId: MI_CAMION_ID,
               location: newPos,
@@ -116,8 +107,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- 5. LÓGICA DEL MODAL DE INCIDENTES ---
-  // (Este código es idéntico, pero ahora usará el MI_CAMION_ID dinámico)
   const modal = document.getElementById("incident-modal");
   const modalContent = modal.querySelector(".modal-content");
   const btnReporte = document.getElementById("btn-reporte-incidente");
@@ -168,29 +157,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // --- ¡NUEVO! INICIAMOS EL PROCESO ---
   getCamionAsignado();
-  // --- 6. ¡NUEVO! LÓGICA DE MENÚ DE PERFIL ---
+  
   const profileToggle = document.getElementById("profile-toggle");
   const profileMenu = document.getElementById("profile-menu");
   const logoutButton = document.getElementById("logout-button");
   const userNameDisplay = document.getElementById("user-name-display");
 
-  // Poner el nombre del usuario en el menú
   if (user && userNameDisplay) {
-    // Muestra solo el primer nombre
     userNameDisplay.textContent = user.nombre.split(" ")[0];
   }
 
-  // Abrir/Cerrar el menú
   if (profileToggle) {
     profileToggle.addEventListener("click", (e) => {
-      e.stopPropagation(); // Evita que el clic se cierre solo
+      e.stopPropagation();
       profileMenu.classList.toggle("show");
     });
   }
 
-  // Lógica de Cerrar Sesión (ahora en el botón)
   if (logoutButton) {
     logoutButton.addEventListener("click", (e) => {
       e.preventDefault();
@@ -202,7 +186,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Cerrar el menú si se hace clic fuera
   window.onclick = function (event) {
     if (profileMenu && !event.target.matches(".profile-icon")) {
       if (profileMenu.classList.contains("show")) {

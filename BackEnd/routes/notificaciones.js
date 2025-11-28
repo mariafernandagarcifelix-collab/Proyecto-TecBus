@@ -93,5 +93,40 @@ router.post("/send-all", protect, async (req, res) => {
   }
 });
 
+// --- RUTA 4: OBTENER HISTORIAL (BLINDADA) ---
+router.get("/", protect, async (req, res) => {
+  try {
+    const historial = await Notificacion.find()
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate("camionId", "numeroUnidad"); 
+
+    const historialFormateado = historial.map(notif => {
+        const n = notif.toObject();
+        
+        // Lógica para decidir qué mostrar en la columna "Camión"
+        let nombreCamion = "N/A"; // Por defecto (para alertas generales)
+
+        if (n.camionId && n.camionId.numeroUnidad) {
+            // Caso perfecto: Tenemos el objeto camión y su número
+            nombreCamion = n.camionId.numeroUnidad;
+        } else if (n.tipo === 'incidente') {
+            // Caso raro: Es incidente pero no se encontró el camión en la DB
+            nombreCamion = "Desconocido";
+        }
+
+        return {
+            ...n,
+            camionUnidad: nombreCamion
+        };
+    });
+
+    res.json(historialFormateado);
+
+  } catch (error) {
+    console.error("Error obteniendo historial:", error);
+    res.status(500).json({ message: "Error al cargar alertas" });
+  }
+});
 
 module.exports = router;

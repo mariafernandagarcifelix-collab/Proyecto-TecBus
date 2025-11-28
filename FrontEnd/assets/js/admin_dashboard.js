@@ -21,7 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let usuariosCargados = [];
   let busMarkers = {};
 
-  const socket = io("http://localhost:5000");
+  // CAMBIO: Usamos SOCKET_URL en lugar de la dirección fija
+  const socket = io(SOCKET_URL);
   socket.on("connect", () =>
     console.log("🔌 Admin conectado al servidor de sockets:", socket.id)
   );
@@ -89,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (targetId === "#alertas") {
         cargarAlertas();
-      } // <-- ¡LÍNEA NUEVA!
+      }
     });
   });
 
@@ -115,7 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   async function fetchAndDrawBuses() {
     try {
-      const response = await fetch("http://localhost:5000/api/camiones", {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/camiones", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("No se pudieron cargar los camiones");
@@ -193,7 +195,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tablaBody) return;
     tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
-      const response = await fetch("http://localhost:5000/api/users", {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Error al cargar usuarios.");
@@ -204,22 +207,25 @@ document.addEventListener("DOMContentLoaded", () => {
           '<tr><td colspan="5">No hay usuarios registrados.</td></tr>';
         return;
       }
+      // Dentro de cargarUsuarios()...
       usuariosCargados.forEach((user) => {
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${user.nombre}</td><td>${
-          user.email
-        }</td><td><span class="badge ${
-          user.tipo === "administrador"
-            ? "badge-admin"
-            : user.tipo === "conductor"
-            ? "badge-conductor"
-            : ""
-        }">${user.tipo}</span></td>
-                    <td>${
-                      user.estado
-                    }</td><td><button class="btn btn-secondary btn-sm btn-edit-user" data-id="${
-          user._id
-        }"><i class="fas fa-edit"></i></button></td>`;
+        
+        // CORRECCIÓN: Agregamos el botón de eliminar con estilo 'btn-danger'
+        row.innerHTML = `
+            <td>${user.nombre}</td>
+            <td>${user.email}</td>
+            <td><span class="badge badge-${user.tipo === 'administrador' ? 'admin' : 'conductor'}">${user.tipo}</span></td>
+            <td>${user.estado || 'activo'}</td>
+            <td>
+                <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${user._id}" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${user._id}" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
         tablaBody.appendChild(row);
       });
     } catch (error) {
@@ -239,7 +245,8 @@ document.addEventListener("DOMContentLoaded", () => {
         tipo: document.getElementById("user-tipo").value,
       };
       try {
-        const response = await fetch("http://localhost:5000/api/users", {
+        // CAMBIO: BACKEND_URL
+        const response = await fetch(BACKEND_URL + "/api/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -263,9 +270,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if (tablaBodyUsuarios) {
     tablaBodyUsuarios.addEventListener("click", (e) => {
       const btnEdit = e.target.closest(".btn-edit-user");
+      const btnDelete = e.target.closest(".btn-delete-user"); // ¡FALTABA ESTA LÍNEA!
+
       if (btnEdit) {
         const user = usuariosCargados.find((u) => u._id === btnEdit.dataset.id);
         if (user) openEditUserModal(user);
+      }
+
+      if (btnDelete) {
+        handleDeleteUser(btnDelete.dataset.id);
       }
     });
   }
@@ -308,7 +321,8 @@ document.addEventListener("DOMContentLoaded", () => {
         vehiculoAsignado: document.getElementById("edit-user-camion").value,
       };
       try {
-        const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+        // CAMBIO: BACKEND_URL
+        const response = await fetch(`${BACKEND_URL}/api/users/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -329,6 +343,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Función para eliminar usuario
+  async function handleDeleteUser(id) {
+    if (!confirm("¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.")) return;
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/users/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message || "No se pudo eliminar");
+
+      alert("✅ Usuario eliminado correctamente");
+      cargarUsuarios(); // Recargar la lista
+      
+    } catch (error) {
+      console.error(error);
+      alert("Error: " + error.message);
+    }
+  }
+
   // --- 5. CRUD - CAMIONES ---
   const modalCamion = document.getElementById("edit-camion-modal");
   const modalFormCamion = document.getElementById("form-edit-camion");
@@ -338,7 +375,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tablaBody) return;
     tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
-      const response = await fetch("http://localhost:5000/api/camiones", {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/camiones", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -379,7 +417,8 @@ document.addEventListener("DOMContentLoaded", () => {
         capacidad: document.getElementById("camion-capacidad").value,
       };
       try {
-        const response = await fetch("http://localhost:5000/api/camiones", {
+        // CAMBIO: BACKEND_URL
+        const response = await fetch(BACKEND_URL + "/api/camiones", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -416,7 +455,8 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleDeleteCamion(id) {
     if (!confirm("¿Eliminar camión?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/camiones/${id}`, {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(`${BACKEND_URL}/api/camiones/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -458,8 +498,9 @@ document.addEventListener("DOMContentLoaded", () => {
         rutaAsignada: document.getElementById("edit-camion-ruta").value,
       };
       try {
+        // CAMBIO: BACKEND_URL
         const response = await fetch(
-          `http://localhost:5000/api/camiones/${id}`,
+          `${BACKEND_URL}/api/camiones/${id}`,
           {
             method: "PUT",
             headers: {
@@ -489,7 +530,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tablaBody) return;
     tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
-      const response = await fetch("http://localhost:5000/api/rutas", {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/rutas", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -531,7 +573,8 @@ document.addEventListener("DOMContentLoaded", () => {
         descripcion: document.getElementById("ruta-descripcion").value,
       };
       try {
-        const response = await fetch("http://localhost:5000/api/rutas", {
+        // CAMBIO: BACKEND_URL
+        const response = await fetch(BACKEND_URL + "/api/rutas", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -572,7 +615,8 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleDeleteRuta(id) {
     if (!confirm("¿Eliminar ruta?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/rutas/${id}`, {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(`${BACKEND_URL}/api/rutas/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -605,7 +649,8 @@ document.addEventListener("DOMContentLoaded", () => {
         activa: document.getElementById("edit-ruta-activa").value === "true",
       };
       try {
-        const response = await fetch(`http://localhost:5000/api/rutas/${id}`, {
+        // CAMBIO: BACKEND_URL
+        const response = await fetch(`${BACKEND_URL}/api/rutas/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -624,82 +669,118 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- 7. CRUD - HORARIOS ---
-  const formRegistrarHorario = document.getElementById(
-    "form-registrar-horario"
-  );
+  const formRegistrarHorario = document.getElementById("form-registrar-horario");
+  const modalEditarHorario = document.getElementById("modal-editar-horario");
+  const formEditarHorario = document.getElementById("form-editar-horario");
+  const closeBtnHorario = modalEditarHorario?.querySelector(".close-button");
+
+  // Variables para edición
+  let editingSalidaId = null;
+  let editingHorarioId = null;
+
   async function cargarHorarios() {
     const tablaBody = document.getElementById("tabla-horarios-body");
     if (!tablaBody) return;
+
     tablaBody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+
     try {
-      const response = await fetch("http://localhost:5000/api/horarios", {
-        method: "GET",
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/horarios", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("Error al cargar horarios.");
       const horarios = await response.json();
+
       tablaBody.innerHTML = "";
       if (horarios.length === 0) {
-        tablaBody.innerHTML =
-          '<tr><td colspan="6">No hay horarios registrados.</td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="6">No hay horarios registrados.</td></tr>';
         return;
       }
+
       horarios.forEach((h) => {
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${h.diaSemana}</td><td>${h.hora}</td><td>${
-          h.rutaNombre || "Ruta eliminada"
-        }</td><td>${h.camionUnidad || "Camión eliminado"}</td><td>${
-          h.conductorNombre || "Conductor eliminado"
-        }</td>
-                    <td><button class="btn btn-danger btn-sm btn-delete-horario" data-id="${
-                      h._id
-                    }" data-salida-id="${
-          h.salidaId
-        }"><i class="fas fa-trash"></i></button></td>`;
+        row.innerHTML = `
+            <td>${h.diaSemana}</td>
+            <td><strong>${h.hora}</strong></td>
+            <td>${h.rutaNombre || "N/A"}</td>
+            <td>${h.camionUnidad || '<span class="text-muted">--</span>'}</td>
+            <td>${h.conductorNombre || '<span class="text-muted">--</span>'}</td>
+            <td>
+                <button class="btn btn-secondary btn-sm btn-edit-horario" 
+                    data-id="${h._id}" 
+                    data-salida-id="${h.salidaId}" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm btn-delete-horario" 
+                    data-id="${h._id}" 
+                    data-salida-id="${h.salidaId}" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
         tablaBody.appendChild(row);
       });
     } catch (error) {
-      tablaBody.innerHTML = `<tr><td colspan="6" class="text-danger">${error.message}</td></tr>`;
+      console.error(error);
+      tablaBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error al cargar</td></tr>`;
     }
   }
-  async function popularDropdownsHorarios() {
-    const selRuta = document.getElementById("horario-ruta");
-    const selCamion = document.getElementById("horario-camion");
-    const selConductor = document.getElementById("horario-conductor");
+
+  document.getElementById("tabla-horarios-body")?.addEventListener("click", (e) => {
+      const btnEdit = e.target.closest(".btn-edit-horario");
+      const btnDelete = e.target.closest(".btn-delete-horario");
+
+      if (btnEdit) {
+          const { id, salidaId } = btnEdit.dataset;
+          abrirEditarHorario(id, salidaId);
+      }
+      if (btnDelete) {
+          const { id, salidaId } = btnDelete.dataset;
+          eliminarHorario(id, salidaId);
+      }
+  });
+
+  async function popularDropdownsHorarios(esEdicion = false) {
+    const suffix = esEdicion ? "edit-horario" : "horario";
+    const selRuta = document.getElementById(`${suffix}-ruta`);
+    const selCamion = document.getElementById(`${suffix}-camion`);
+    const selConductor = document.getElementById(`${suffix}-conductor`);
+
+    if (esEdicion && !selRuta) return;
+
     try {
       const [resRutas, resCamiones, resConductores] = await Promise.all([
-        fetch("http://localhost:5000/api/rutas", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch("http://localhost:5000/api/camiones", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch("http://localhost:5000/api/users/conductores", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        // CAMBIO: BACKEND_URL
+        fetch(BACKEND_URL + "/api/rutas", { headers: { Authorization: `Bearer ${token}` }}),
+        !esEdicion ? fetch(BACKEND_URL + "/api/camiones", { headers: { Authorization: `Bearer ${token}` }}) : null,
+        !esEdicion ? fetch(BACKEND_URL + "/api/users/conductores", { headers: { Authorization: `Bearer ${token}` }}) : null,
       ]);
+
       const rutas = await resRutas.json();
-      const camiones = await resCamiones.json();
-      const conductores = await resConductores.json();
       selRuta.innerHTML = '<option value="">-- Elige una Ruta --</option>';
       rutas.forEach((r) => {
-        if (r.activa)
-          selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`;
+        if (r.activa) selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`;
       });
-      selCamion.innerHTML = '<option value="">-- Elige un Camión --</option>';
-      camiones.forEach((c) => {
-        if (c.estado === "activo")
-          selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`;
-      });
-      selConductor.innerHTML =
-        '<option value="">-- Elige un Conductor --</option>';
-      conductores.forEach((c) => {
-        selConductor.innerHTML += `<option value="${c._id}">${c.nombre}</option>`;
-      });
+
+      if (!esEdicion && selCamion && selConductor) {
+        const camiones = await resCamiones.json();
+        const conductores = await resConductores.json();
+
+        selCamion.innerHTML = '<option value="">-- Elige un Camión --</option>';
+        camiones.forEach((c) => {
+          if (c.estado === "activo") selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`;
+        });
+
+        selConductor.innerHTML = '<option value="">-- Elige un Conductor --</option>';
+        conductores.forEach((c) => {
+          selConductor.innerHTML += `<option value="${c._id}">${c.nombre}</option>`;
+        });
+      }
     } catch (error) {
       console.error("Error populando dropdowns:", error);
     }
   }
+
   if (formRegistrarHorario) {
     formRegistrarHorario.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -710,38 +791,35 @@ document.addEventListener("DOMContentLoaded", () => {
         camionAsignado: document.getElementById("horario-camion").value,
         conductorAsignado: document.getElementById("horario-conductor").value,
       };
+
       try {
-        const response = await fetch("http://localhost:5000/api/horarios", {
+        // CAMBIO: BACKEND_URL
+        const res = await fetch(BACKEND_URL + "/api/horarios", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(datos),
         });
-        if (!response.ok) throw new Error("Error al registrar la salida");
-        alert("¡Salida registrada!");
-        formRegistrarHorario.reset();
-        cargarHorarios();
+
+        if (res.ok) {
+          alert("¡Salida registrada!");
+          formRegistrarHorario.reset();
+          cargarHorarios();
+        } else {
+          const err = await res.json();
+          alert("Error: " + err.message);
+        }
       } catch (error) {
-        alert(error.message);
+        alert("Error de conexión");
       }
     });
   }
-  const tablaBodyHorarios = document.getElementById("tabla-horarios-body");
-  if (tablaBodyHorarios) {
-    tablaBodyHorarios.addEventListener("click", (e) => {
-      const btnDelete = e.target.closest(".btn-delete-horario");
-      if (btnDelete) {
-        handleDeleteHorario(btnDelete.dataset.id, btnDelete.dataset.salidaId);
-      }
-    });
-  }
+
   async function handleDeleteHorario(id, salidaId) {
     if (!confirm("¿Eliminar esta salida del horario?")) return;
     try {
+      // CAMBIO: BACKEND_URL
       const response = await fetch(
-        `http://localhost:5000/api/horarios/${id}/salidas/${salidaId}`,
+        `${BACKEND_URL}/api/horarios/${id}/salidas/${salidaId}`,
         { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
       );
       if (!response.ok) throw new Error("No se pudo eliminar");
@@ -752,7 +830,85 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- 8. CRUD - EDITOR DE RUTAS (MAPA) ---
+  async function abrirEditarHorario(horarioId, salidaId) {
+    await popularDropdownsHorarios(true);
+
+    try {
+      // CAMBIO: BACKEND_URL
+      const res = await fetch(`${BACKEND_URL}/api/horarios/${horarioId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const horarioDoc = await res.json();
+      const salida = horarioDoc.salidas.find((s) => s._id === salidaId);
+
+      if (!salida) throw new Error("Salida no encontrada");
+
+      document.getElementById("edit-horario-id").value = horarioId;
+      editingSalidaId = salidaId;
+      editingHorarioId = horarioId;
+
+      const selRuta = document.getElementById("edit-horario-ruta");
+      selRuta.value = horarioDoc.ruta._id || horarioDoc.ruta;
+      
+      const selDia = document.getElementById("edit-horario-dia");
+      selDia.value = horarioDoc.diaSemana; 
+
+      document.getElementById("edit-horario-salida").value = salida.hora;
+      document.getElementById("edit-horario-llegada").value = "";
+
+      modalEditarHorario.classList.add("modal-visible");
+    } catch (error) {
+      console.error(error);
+      alert("Error al cargar datos");
+    }
+  }
+
+  if (formEditarHorario) {
+    formEditarHorario.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const data = {
+            ruta: document.getElementById("edit-horario-ruta").value,
+            diaSemana: document.getElementById("edit-horario-dia").value,
+            hora: document.getElementById("edit-horario-salida").value
+        };
+
+        try {
+            // CAMBIO: BACKEND_URL
+            const res = await fetch(`${BACKEND_URL}/api/horarios/${editingHorarioId}/salidas/${editingSalidaId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                alert('✅ Horario actualizado correctamente');
+                modalEditarHorario.classList.remove("modal-visible");
+                cargarHorarios();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + err.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error de conexión");
+        }
+    });
+  }
+
+  if (closeBtnHorario) {
+    closeBtnHorario.onclick = () => {
+      modalEditarHorario.classList.remove("modal-visible");
+    };
+  }
+  window.cerrarModalEditarHorario = () => {
+    modalEditarHorario.classList.remove("modal-visible");
+  };
+
+  // --- 8. EDITOR DE RUTAS (MAPA) ---
   const modalRutaMapa = document.getElementById("edit-ruta-mapa-modal");
   const modalFormRutaMapa = document.getElementById("form-edit-ruta-mapa");
   const closeModalBtnRutaMapa = modalRutaMapa.querySelector(".close-button");
@@ -828,8 +984,9 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       const id = document.getElementById("edit-ruta-mapa-id").value;
       try {
+        // CAMBIO: BACKEND_URL
         const response = await fetch(
-          `http://localhost:5000/api/rutas/${id}/paradas`,
+          `${BACKEND_URL}/api/rutas/${id}/paradas`,
           {
             method: "PUT",
             headers: {
@@ -850,17 +1007,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- 9. ¡NUEVO! CRUD - HISTORIAL DE ALERTAS ---
-
-  /**
-   * Carga el historial de alertas desde la API
-   */
   async function cargarAlertas() {
     const tablaBody = document.getElementById("tabla-alertas-body");
     if (!tablaBody) return;
     tablaBody.innerHTML = '<tr><td colspan="4">Cargando historial...</td></tr>';
 
     try {
-      const response = await fetch("http://localhost:5000/api/notificaciones", {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/notificaciones", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -872,7 +1026,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const alertas = await response.json();
 
-      tablaBody.innerHTML = ""; // Limpiamos la tabla
+      tablaBody.innerHTML = ""; 
       if (alertas.length === 0) {
         tablaBody.innerHTML =
           '<tr><td colspan="4">No hay alertas registradas.</td></tr>';
@@ -881,7 +1035,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       alertas.forEach((alerta) => {
         const row = document.createElement("tr");
-        // Formateamos la fecha para que sea legible
         const fecha = new Date(alerta.createdAt).toLocaleString("es-MX", {
           dateStyle: "short",
           timeStyle: "short",
@@ -909,5 +1062,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.target == modalRuta) closeEditRutaModal();
     if (event.target == modalUser) closeEditUserModal();
     if (event.target == modalRutaMapa) closeEditRutaMapaModal();
+    if (event.target == modalEditarHorario) cerrarModalEditarHorario();
   };
 });

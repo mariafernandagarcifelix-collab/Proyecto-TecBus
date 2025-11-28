@@ -35,6 +35,9 @@ const notificacionSchema = new mongoose.Schema(
       type: String,
       enum: ["baja", "media", "alta", "urgente"], //
       default: "media",
+    },camionId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Camion' 
     },
     // (Omitimos 'destinatarios' por ahora para simplificar,
     // ya que las alertas de incidentes son para todos)

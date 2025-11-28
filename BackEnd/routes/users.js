@@ -147,4 +147,28 @@ router.get("/mi-camion", protect, async (req, res) => {
   }
 });
 
+// --- RUTA: Eliminar Usuario ---
+// DELETE /api/users/:id
+router.delete("/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Evitar que el admin se borre a sí mismo por error
+    if (req.user._id.equals(user._id)) {
+        return res.status(400).json({ message: "No puedes eliminar tu propia cuenta de administrador" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "Usuario eliminado correctamente" });
+    
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al eliminar el usuario" });
+  }
+});
+
 module.exports = router;

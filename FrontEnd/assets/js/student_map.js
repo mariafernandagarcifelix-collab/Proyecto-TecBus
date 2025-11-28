@@ -1,10 +1,5 @@
 // frontend/assets/js/student_map.js
 
-/**
- * ¡NUEVO! Función de ayuda para convertir la llave VAPID
- * de un string (Base64) a un array binario (Uint8Array)
- * que el navegador entiende.
- */
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -19,7 +14,6 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. VERIFICACIÓN DE SEGURIDAD ---
   const token = localStorage.getItem("tecbus_token");
   const userString = localStorage.getItem("tecbus_user");
   if (!token || !userString) {
@@ -33,15 +27,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // --- 2. CONFIGURACIÓN INICIAL ---
   const initialLat = 25.567,
     initialLng = -108.473,
     initialZoom = 13;
-  const socket = io("http://localhost:5000");
+  
+  // CAMBIO: SOCKET_URL dinámico
+  const socket = io(SOCKET_URL);
   let busMarkers = {},
     rutaPolyline = null;
 
-  // --- 3. INICIALIZACIÓN DEL MAPA ---
   const map = L.map("map").setView([initialLat, initialLng], initialZoom);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     attribution: "&copy; OpenStreetMap &copy; CARTO",
@@ -53,10 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
     iconAnchor: [15, 15],
   });
 
-  // --- 4. LÓGICA DE CARGA DE CAMIONES ---
   async function fetchAndDrawBuses() {
     try {
-      const response = await fetch("http://localhost:5000/api/camiones", {
+      // CAMBIO: BACKEND_URL
+      const response = await fetch(BACKEND_URL + "/api/camiones", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("No se pudieron cargar los camiones");
@@ -86,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- 5. LÓGICA DE TIEMPO REAL (SOCKET.IO) ---
   socket.on("connect", () =>
     console.log("🔌 Conectado al servidor de sockets con ID:", socket.id)
   );
@@ -111,7 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  // --- 6. LÓGICA DE INTERFAZ (BOTONES) ---
   const camionSelector = document.getElementById("camion-selector");
   camionSelector.addEventListener("change", (e) => {
     const selectedOption = e.target.options[e.target.selectedIndex];
@@ -132,8 +124,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   async function dibujarRuta(rutaId) {
     try {
+      // CAMBIO: BACKEND_URL
       const response = await fetch(
-        `http://localhost:5000/api/rutas/${rutaId}`,
+        `${BACKEND_URL}/api/rutas/${rutaId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!response.ok)
@@ -143,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const coordenadas = ruta.paradas.map((p) => [
         p.ubicacion.coordinates[1],
         p.ubicacion.coordinates[0],
-      ]); // [lat, lng]
+      ]);
       if (rutaPolyline) map.removeLayer(rutaPolyline);
       rutaPolyline = L.polyline(coordenadas, {
         color: "var(--color-primario)",
@@ -205,7 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
     alert("🔗 (Función no implementada) Redirigiendo a Historial...")
   );
 
-  // --- 7. LÓGICA DE MENÚ DE PERFIL ---
   const profileToggle = document.getElementById("profile-toggle");
   const profileMenu = document.getElementById("profile-menu");
   const logoutButton = document.getElementById("logout-button");
@@ -237,8 +229,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // --- 8. LÓGICA DE PUSH NOTIFICATIONS (¡CON CONVERSIÓN!) ---
-
   async function initPushNotifications() {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       console.log("Push Notifications Soportadas");
@@ -259,20 +249,20 @@ document.addEventListener("DOMContentLoaded", () => {
         if (subscription === null) {
           console.log("No hay suscripción, creando una nueva...");
 
-          // ¡AQUÍ ESTÁ LA NUEVA LÓGICA DE CONVERSIÓN!
           const vapidPublicKey =
             "BB2W0pmQXVhTWikH1YxYYJb2hMGjqU5aAechud7OzKxJiKH9-8_jWnygraHnh7WzlpuwwXWmLDUI65eosU6cZSs";
-          const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey); // Usamos la función de ayuda
+          const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
 
           subscription = await readySwReg.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: convertedVapidKey, // ¡Pasamos el array binario!
+            applicationServerKey: convertedVapidKey,
           });
           console.log("Nueva suscripción creada.");
         }
 
         console.log("Enviando suscripción al backend...");
-        await fetch("http://localhost:5000/api/notificaciones/subscribe", {
+        // CAMBIO: BACKEND_URL
+        await fetch(BACKEND_URL + "/api/notificaciones/subscribe", {
           method: "POST",
           body: JSON.stringify(subscription),
           headers: {
@@ -283,7 +273,8 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Suscripción guardada en el backend.");
 
         console.log("Pidiendo predicción...");
-        await fetch("http://localhost:5000/api/notificaciones/mi-prediccion", {
+        // CAMBIO: BACKEND_URL
+        await fetch(BACKEND_URL + "/api/notificaciones/mi-prediccion", {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -296,7 +287,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- Carga Inicial ---
   fetchAndDrawBuses();
-  initPushNotifications(); // ¡Inicia todo el proceso de notificaciones!
+  initPushNotifications();
 });

@@ -1,6 +1,5 @@
 // backend/server.js
 
-// 1. Importar las herramientas
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -8,7 +7,7 @@ const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 
-// Importamos los Modelos que usaremos
+// Importamos los Modelos
 const Camion = require("./models/Camion");
 const Notificacion = require("./models/Notificacion");
 
@@ -18,20 +17,22 @@ const camionRoutes = require("./routes/camiones");
 const rutaRoutes = require("./routes/rutas");
 const horarioRoutes = require("./routes/horarios");
 const userRoutes = require("./routes/users");
+const notificacionRoutes = require("./routes/notificaciones");
 const { startAnalyticsJobs } = require("./analytics/cronJobs");
-const notificacionRoutes = require("./routes/notificaciones"); // <-- ¡LÍNEA NUEVA!
 
 // 2. Inicializar la aplicación
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "*", // Permite conexiones desde cualquier IP (importante para el celular)
     methods: ["GET", "POST"],
   },
 });
 
+// Compartir io con las rutas
 app.set("io", io);
+
 const PORT = process.env.PORT || 5000;
 
 // 3. Middlewares
@@ -51,11 +52,8 @@ mongoose
     console.error("❌ Error al conectar a MongoDB:", err.message);
   });
 
-// 5. Rutas de prueba y API
-app.get("/", (req, res) => {
-  res.send("¡El backend de TecBus está funcionando!");
-});
-
+// 5. Rutas
+app.get("/", (req, res) => res.send("¡Servidor TecBus Activo!"));
 app.use("/api/auth", authRoutes);
 app.use("/api/camiones", camionRoutes);
 app.use("/api/rutas", rutaRoutes);
@@ -63,78 +61,106 @@ app.use("/api/horarios", horarioRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
 
-// 6. LÓGICA DE SOCKET.IO
+// 6. LÓGICA DE SOCKET.IO (TIEMPO REAL)
 io.on("connection", (socket) => {
-  console.log(`🔌 Un usuario se ha conectado: ${socket.id}`);
+  console.log(`🔌 Nuevo cliente conectado: ${socket.id}`);
 
+  // --- A. Actualización de Ubicación (Conductor -> Mapa) ---
   socket.on("driverLocationUpdate", async (data) => {
     try {
-      const camion = await Camion.findByIdAndUpdate(
-        data.camionId,
-        {
-          ubicacionActual: {
-            type: "Point",
-            coordinates: [data.location.lng, data.location.lat],
-          },
-          ultimaActualizacion: Date.now(),
-        },
-        { new: true }
-      );
-
-      if (camion) {
-        io.emit("locationUpdate", {
-          camionId: camion._id,
-          numeroUnidad: camion.numeroUnidad,
-          location: data.location,
-        });
-      }
+        // Solo actualizamos si es un ID válido, para evitar errores
+        if (mongoose.Types.ObjectId.isValid(data.camionId)) {
+             const camion = await Camion.findByIdAndUpdate(
+                data.camionId,
+                {
+                  ubicacionActual: {
+                    type: "Point",
+                    coordinates: [data.location.lng, data.location.lat],
+                  },
+                  ultimaActualizacion: Date.now(),
+                },
+                { new: true }
+              );
+        
+              if (camion) {
+                io.emit("locationUpdate", {
+                  camionId: camion._id,
+                  numeroUnidad: camion.numeroUnidad,
+                  location: data.location,
+                });
+              }
+        }
     } catch (error) {
-      console.error("Error al actualizar ubicación:", error);
+      console.error("Error actualizando ubicación:", error.message);
     }
   });
 
-  // --- ¡SECCIÓN ACTUALIZADA! ---
-  // Evento: El conductor reporta un incidente
+  // --- B. Reporte de Incidente (Conductor -> Admin) ---
+  // ESTA ES LA PARTE CRÍTICA QUE CORREGIMOS
   socket.on("incidentReport", async (data) => {
-    // ¡NUEVO! Añadido 'async'
-    // data = { camionId: '...', tipo: 'Tráfico', detalles: '...' }
-    console.log(`🚨 Incidente reportado: ${data.tipo}`);
+    console.log("🔍 [DEBUG] Procesando incidente:", data);
 
     try {
-      // --- ¡NUEVO! Guardamos la alerta en la DB ---
-      // (Basado en tu Notificacion.pdf)
-      const nuevaNotificacion = new Notificacion({
+      let camionEncontrado = null;
+      let idParaGuardar = null;
+      let nombreParaMostrar = data.camionId; // Por defecto usamos lo que manden
+
+      // PASO 1: Intentar identificar el camión
+      if (mongoose.Types.ObjectId.isValid(data.camionId)) {
+        // Si nos mandaron un ID de Mongo, buscamos por ID
+        camionEncontrado = await Camion.findById(data.camionId);
+      } else {
+        // Si nos mandaron texto (ej: "TEC-01"), buscamos por número o placa
+        camionEncontrado = await Camion.findOne({ 
+            $or: [{ numeroUnidad: data.camionId }, { placa: data.camionId }] 
+        });
+      }
+
+      // PASO 2: Preparar datos según lo encontrado
+      if (camionEncontrado) {
+          console.log("✅ [DEBUG] Camión identificado:", camionEncontrado.numeroUnidad);
+          idParaGuardar = camionEncontrado._id; // El ID hexadecimal para la BD
+          nombreParaMostrar = camionEncontrado.numeroUnidad; // El nombre corto para la Alerta
+      } else {
+          console.warn("⚠️ [DEBUG] Camión no encontrado en BD. Se guardará sin vínculo.");
+          // No asignamos idParaGuardar para evitar el CastError
+      }
+
+      // PASO 3: Guardar en Base de Datos
+      await Notificacion.create({
         tipo: "incidente",
         titulo: `Incidente: ${data.tipo}`,
-        mensaje: data.detalles || "Sin detalles.",
-        prioridad: "alta", // Los incidentes son de alta prioridad
-        relacionCon: {
-          tipo: "camion",
-          id: new mongoose.Types.ObjectId(data.camionId),
-        },
+        mensaje: data.detalles || "Sin detalles adicionales",
+        prioridad: "alta",
+        camionId: idParaGuardar, // Puede ser el ID o null (nunca un string inválido)
+        fecha: new Date()
       });
-      await nuevaNotificacion.save();
-      
+      console.log("💾 [DEBUG] Notificación guardada en MongoDB");
 
-      // Transmitimos la alerta a TODOS (Estudiantes y Admins)
-      // (Esta línea ya la tenías, la dejamos igual)
-      io.emit("newIncidentAlert", data);
+      // PASO 4: Emitir Alerta al Admin (Inmediata)
+      io.emit("newIncidentAlert", {
+        tipo: data.tipo,
+        detalles: data.detalles,
+        camionId: nombreParaMostrar, // Aquí mandamos el texto legible (ej: "TEC-01")
+        hora: new Date()
+      });
+      console.log("📡 [DEBUG] Alerta emitida a los administradores");
+
     } catch (error) {
-      console.error("Error al guardar incidente:", error);
+      console.error("❌ [ERROR CRÍTICO] Fallo al procesar incidente:", error);
     }
   });
 
   socket.on("studentAtStop", (data) => {
-    console.log(`🙋 Estudiante esperando en: ${data.rutaId}`);
     io.emit("studentWaiting", data);
   });
 
   socket.on("disconnect", () => {
-    console.log(`🔌 Usuario desconectado: ${socket.id}`);
+    // console.log(`🔌 Desconectado: ${socket.id}`);
   });
 });
 
-// 7. ¡CAMBIO! Arrancamos el 'server' (que incluye Express y Socket.IO)
+// 7. Arrancar servidor
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
