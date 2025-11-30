@@ -543,7 +543,23 @@ header {
     align-items: center;
     border-bottom: 1px solid #333;
 }
-.header-controls h2 { color: white; margin: 0; font-size: 1.2rem; }
+.header-controls {
+    display: flex;           /* <--- Esto pone los elementos uno al lado del otro */
+    align-items: center;     /* Los centra verticalmente */
+    gap: 15px;               /* Espacio entre el icono y el texto */
+}
+
+.header-controls h2 {
+    margin: 0;               /* Elimina el margen que empuja el texto */
+    font-size: 1.4rem;
+    color: white;
+    display: inline-block;   /* Asegura que el texto no intente ocupar todo el ancho */
+}
+
+.header-controls .logo-icon {
+    font-size: 1.8rem;
+    color: var(--color-primario);
+}
 .header-controls i { color: var(--color-primario); margin-right: 10px; font-size: 1.4rem; }
 .close-fs-btn {
     background: rgba(255,255,255,0.1);
@@ -581,10 +597,34 @@ header {
     flex-direction: column;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     transition: transform 0.2s;
+    
+    /* CLAVE PARA ALINEACIÓN VERTICAL: */
+    height: 100%; /* Fuerza a que todas las tarjetas de la fila tengan la misma altura */
+    min-height: 180px; /* Altura mínima visual */
 }
+
 .day-card:hover {
     transform: translateY(-5px);
     border-color: var(--color-primario);
+}
+
+.day-body {
+    padding: 10px;
+    flex-grow: 1; /* Esto hace que el contenido se expanda para llenar la tarjeta */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Estilo para cuando no hay viajes (centrado perfecto) */
+.no-service {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-style: italic;
+    opacity: 0.7;
 }
 
 /* Encabezado de la tarjeta (LUNES, MARTES...) */
@@ -611,11 +651,6 @@ header {
     border-radius: 10px;
 }
 
-/* Cuerpo de la tarjeta */
-.day-body {
-    padding: 10px;
-    min-height: 100px; /* Altura mínima para que se vean uniformes */
-}
 
 /* Ítem individual de viaje */
 .cal-item {
@@ -659,17 +694,6 @@ header {
 }
 .cal-bus-badge i { color: var(--color-primario); }
 
-/* Estilo para día de descanso */
-.no-service {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #555;
-    font-style: italic;
-    padding: 20px 0;
-}
 .placeholder-text { color: #777; font-size: 1.2rem; margin-top: 50px; }
 
 /* Scrollbar */
