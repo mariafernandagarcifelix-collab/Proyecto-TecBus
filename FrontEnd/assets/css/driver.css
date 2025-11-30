@@ -364,3 +364,315 @@ header {
     text-align: center;
     line-height: 30px;
 }
+
+/* ... (Mantén tus estilos existentes hasta la parte de modales) ... */
+
+/* --- AGREGAR AL FINAL DE TU DRIVER.CSS --- */
+
+/* SIDEBAR (Estilos Idénticos al Estudiante) */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    background-color: var(--color-superficie);
+    display: flex;
+    flex-direction: column;
+    z-index: 2000;
+    box-shadow: 3px 0 15px rgba(0, 0, 0, 0.5);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-out;
+}
+.sidebar.active {
+    transform: translateX(0);
+}
+.logo-area {
+    padding: 25px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--color-secundario);
+    position: relative;
+}
+.logo-area h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--color-texto);
+}
+.logo-area p {
+    margin: 5px 0 0;
+    font-size: 0.9rem;
+    color: var(--color-texto-gris);
+}
+.sidebar-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--color-texto-gris);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.main-nav {
+    flex-grow: 1;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 25px;
+    color: var(--color-texto-gris);
+    text-decoration: none;
+    transition: all 0.3s;
+    border-left: 5px solid transparent;
+    font-size: 1rem;
+}
+.nav-item i {
+    margin-right: 15px;
+    font-size: 1.2rem;
+    width: 25px;
+    text-align: center;
+}
+.nav-item:hover, .nav-item.active {
+    background-color: #2a2a2a;
+    color: white;
+    border-left-color: var(--color-primario);
+}
+.nav-item.logout {
+    color: #ff6b6b;
+}
+.nav-item.logout:hover {
+    background-color: rgba(255, 107, 107, 0.1);
+    border-left-color: #ff6b6b;
+}
+.sidebar-footer {
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid var(--color-secundario);
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/* ESTILOS PARA LOS MODALES Y LISTAS (Perfil y Horario) */
+.profile-card {
+    text-align: center;
+}
+.profile-avatar {
+    font-size: 4rem;
+    color: var(--color-primario);
+    margin-bottom: 10px;
+}
+.profile-info-group {
+    text-align: left;
+    margin-top: 20px;
+    background-color: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 8px;
+}
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #444;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { font-weight: bold; color: #aaa; }
+.info-value { color: white; }
+
+/* Lista de horarios en modal */
+.horarios-lista {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+.horario-item-card {
+    background-color: #2a2a2a;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 4px solid var(--color-primario);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.dia-header-list {
+    color: var(--color-primario);
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 2px;
+}
+.horario-vacio {
+    text-align: center; 
+    color: #777; 
+    font-style: italic;
+}
+
+/* --- AGREGAR AL FINAL DE DRIVER.CSS --- */
+
+/* VISTA PANTALLA COMPLETA */
+/* --- ESTILOS DE CALENDARIO (GRID) PARA CONDUCTOR --- */
+
+/* Contenedor de Pantalla Completa */
+.fullscreen-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: #121212; /* Fondo negro de fondo */
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.fullscreen-overlay.active { transform: translateY(0); }
+
+/* Header del Overlay */
+.fullscreen-header {
+    background-color: var(--color-superficie);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+}
+.header-controls h2 { color: white; margin: 0; font-size: 1.2rem; }
+.header-controls i { color: var(--color-primario); margin-right: 10px; font-size: 1.4rem; }
+.close-fs-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid #444;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+/* Contenedor Principal con Scroll */
+.fullscreen-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* GRID SYSTEM */
+.calendar-grid {
+    display: grid;
+    /* Esto crea columnas automáticas de mínimo 260px */
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* TARJETA DE DÍA */
+.day-card {
+    background-color: #1e1e1e;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
+}
+.day-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-primario);
+}
+
+/* Encabezado de la tarjeta (LUNES, MARTES...) */
+.day-header {
+    background-color: #252525;
+    padding: 12px 15px;
+    border-bottom: 2px solid var(--color-primario);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.day-header h3 {
+    margin: 0;
+    color: var(--color-primario);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.badge-count {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Cuerpo de la tarjeta */
+.day-body {
+    padding: 10px;
+    min-height: 100px; /* Altura mínima para que se vean uniformes */
+}
+
+/* Ítem individual de viaje */
+.cal-item {
+    background-color: rgba(255,255,255,0.05);
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: 3px solid var(--color-primario);
+}
+
+.cal-time-box {
+    background-color: #333;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-align: center;
+    min-width: 65px;
+}
+.cal-time {
+    font-weight: bold;
+    color: white;
+    font-size: 1.1rem;
+    display: block;
+}
+
+.cal-info-box {
+    display: flex;
+    flex-direction: column;
+}
+.cal-route {
+    color: #ccc;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+.cal-bus-badge {
+    font-size: 0.75rem;
+    color: #888;
+}
+.cal-bus-badge i { color: var(--color-primario); }
+
+/* Estilo para día de descanso */
+.no-service {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-style: italic;
+    padding: 20px 0;
+}
+.placeholder-text { color: #777; font-size: 1.2rem; margin-top: 50px; }
+
+/* Scrollbar */
+.fullscreen-content::-webkit-scrollbar { width: 10px; }
+.fullscreen-content::-webkit-scrollbar-track { background: #111; }
+.fullscreen-content::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }

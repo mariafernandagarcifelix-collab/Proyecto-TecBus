@@ -5,66 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Panel de Conductor - TECNM Guasave</title>
 
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/driver.css" />
 
     <script>
-      // Esta constante usa la IP de la laptop cuando el navegador la usa,
-      // y usa localhost cuando la IP es 127.0.0.1
       const BACKEND_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
         ? "http://localhost:5000"
-        : "http://${location.hostname}:5000";
-
-      // La URL para Socket.IO es el host (sin el puerto)
+        : `http://${location.hostname}:5000`;
       const SOCKET_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
         ? "http://localhost:5000"
-        : "http://${location.hostname}:5000";
+        : `http://${location.hostname}:5000`;
     </script>
   </head>
 
   <body id="driver-body">
     <header>
-      <div class="menu-icon"><i class="fas fa-bars"></i></div>
+      <div class="menu-icon" id="btn-menu-toggle"><i class="fas fa-bars"></i></div>
       <div class="header-title">
         <h1>Panel de Conductor</h1>
         <p id="header-bus-display">Cargando unidad...</p>
       </div>
       <div class="profile-dropdown">
         <i class="fas fa-user-circle profile-icon" id="profile-toggle"></i>
-
         <div class="dropdown-content" id="profile-menu">
           <div class="dropdown-header">
             Hola, <span id="user-name-display">Usuario</span>
           </div>
-          <a href="#" id="logout-button">
-            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-          </a>
+          <a href="#" id="btn-open-perfil-header"><i class="fas fa-id-card"></i> Ver Datos</a>
+          <a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
         </div>
       </div>
     </header>
+
+    <div id="sidebar" class="sidebar">
+        <div class="logo-area">
+            <button class="sidebar-close-btn" id="btn-menu-close"><i class="fas fa-times"></i></button>
+            <i class="fas fa-bus" style="font-size: 2rem; color: var(--color-primario); margin-bottom:10px;"></i>
+            <h2>TecBus</h2>
+            <p>Conductor</p>
+        </div>
+
+        <nav class="main-nav">
+            <a href="#" class="nav-item active" onclick="document.getElementById('sidebar').classList.remove('active')">
+                <i class="fas fa-map-marker-alt"></i> Mi Recorrido
+            </a>
+            <a href="#" id="btn-open-horario-sidebar" class="nav-item">
+                <i class="fas fa-calendar-check"></i> Mis Horarios
+            </a>
+            <a href="#" id="btn-open-perfil-sidebar" class="nav-item">
+                <i class="fas fa-user-tie"></i> Mi Perfil
+            </a>
+            <a href="#" onclick="alert('Tampoco tiene nada por ahora oke?')" class="nav-item">
+                <i class="fas fa-question-circle"></i> Ayuda
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" id="sidebar-logout" class="nav-item logout">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </a>
+            <p style="margin-top:15px;">© 2025 TecBus PCFL</p>
+        </div>
+    </div>
 
     <div id="map-container">
       <div id="map"></div>
 
       <div class="driver-info-panel card-panel">
         <div class="route-status">
-          <div style="margin-bottom: 5px;">
+          <!-- <div style="margin-bottom: 5px;">
             <strong id="driver-bus-display" style="font-size: 1.1em;">Cargando unidad...</strong>
-          </div>
+          </div> -->
           <span class="route-name" id="driver-route-display">Cargando ruta...</span>
           <br>
           <span class="status-indicator" id="service-status">● Verificando...</span>
         </div>
         <div class="students-count">
-          En espera: <span id="espera-count">0</span>
+           <i class="fas fa-road"></i> En ruta
         </div>
       </div>
 
@@ -73,37 +92,73 @@
           <i class="fas fa-exclamation-triangle"></i> Reportar Incidente
         </button>
       </div>
+    </div>
 
-      <div id="incident-modal" class="modal">
-        <div class="modal-content">
-          <span class="close-button">&times;</span>
-          <h2>Reporte de Incidente</h2>
-          <p>Selecciona el tipo de retraso y envíalo a los estudiantes.</p>
-
-          <select id="incident-type" class="custom-select">
-            <option value="">-- Elige un tipo --</option>
-            <option value="Trafico">Tráfico Pesado</option>
-            <option value="Accidente">Accidente en Vía</option>
-            <option value="Averia">Avería del Vehículo</option>
-            <option value="Otro">Otro Retraso</option>
-          </select>
-
-          <textarea
-            id="incident-details"
-            placeholder="Detalles adicionales... (Opcional)"
-          ></textarea>
-
-          <button id="send-incident" class="btn btn-error-lg">
-            Enviar Alerta
-          </button>
-        </div>
+    <div id="incident-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Reporte de Incidente</h2>
+        <p>Selecciona el tipo de retraso en la ruta:</p>
+        <select id="incident-type" class="custom-select">
+          <option value="">-- Elige un tipo --</option>
+          <option value="Trafico">Tráfico Pesado</option>
+          <option value="Accidente">Accidente en Vía</option>
+          <option value="Bloqueo">Calle Bloqueada</option>
+          <option value="Otro">Otro Retraso</option>
+        </select>
+        <textarea id="incident-details" placeholder="Detalles..."></textarea>
+        <button id="send-incident" class="btn btn-error-lg">Enviar Alerta</button>
       </div>
     </div>
 
+    <div id="modal-perfil" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ficha de Conductor</h2>
+                <span class="close-button" onclick="document.getElementById('modal-perfil').classList.remove('modal-visible')">&times;</span>
+            </div>
+            <div class="profile-card">
+                <i class="fas fa-user-tie profile-avatar"></i>
+                <h3 id="perfil-nombre" style="color:white; margin-bottom:5px;">Cargando...</h3>
+                <p style="color:var(--color-primario);">CONDUCTOR OFICIAL</p>
+                <div class="profile-info-group">
+                    <div class="info-row">
+                        <span class="info-label">Licencia:</span>
+                        <span class="info-value" id="perfil-licencia">...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Correo:</span>
+                        <span class="info-value" id="perfil-email">...</span>
+                    </div>
+                     <div class="info-row">
+                        <span class="info-label">ID Sistema:</span>
+                        <span class="info-value" id="perfil-id">...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="fullscreen-horarios" class="fullscreen-overlay">
+        <div class="fullscreen-header">
+            <div class="header-controls">
+                <i class="fas fa-calendar-alt logo-icon"></i>
+                <h2>Mi Agenda Semanal</h2>
+            </div>
+            <button class="close-fs-btn" id="btn-cerrar-horarios">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+
+        <div class="fullscreen-content">
+            <div id="calendario-semanal" class="calendar-grid">
+                <p class="placeholder-text">Cargando tus asignaciones...</p>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
     <script src="assets/js/driver_map.js"></script>
   </body>
 </html>
