@@ -331,3 +331,36 @@ header {
   margin-right: 10px;
   color: var(--color-error); /* Color rojo para salir */
 }
+
+/* Badge de Estado */
+.status-badge {
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.status-badge.activo {
+    background-color: #2ecc71; /* Verde */
+    color: white;
+}
+
+.status-badge.espera {
+    background-color: #f1c40f; /* Amarillo */
+    color: #2d3436;
+}
+
+.status-badge.fuera {
+    background-color: #ff6b6b; /* Rojo */
+    color: white;
+}
+
+/* Icono en el mapa */
+.driver-icon-map {
+    text-align: center;
+    line-height: 30px;
+}
