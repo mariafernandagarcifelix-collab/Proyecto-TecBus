@@ -53,17 +53,17 @@ const ejecutarAnalisisVelocidad = async () => {
   }
 };
 
-// --- ¡NUEVO! Lógica de la Consulta 4 extraída a su propia función ---
 const ejecutarAnalisisHabitos = async () => {
   console.log("--- 🏃‍♂️ Ejecutando Job: Análisis de Hábitos ---");
   try {
     await HistorialViaje.aggregate([
       {
         $group: {
+          // 1. CORRECCIÓN: Usar nombres reales del modelo HistorialBusqueda
           _id: {
-            estudiante: "$estudianteId",
-            ruta: "$ruta",
-            hora: "$horaProgramada",
+            usuario: "$usuario",        // Antes: $estudianteId (Incorrecto)
+            ruta: "$ruta",              // Correcto
+            hora: "$horaBusqueda",      // Antes: $horaProgramada (Incorrecto)
           },
           conteo: { $sum: 1 },
         },
@@ -71,7 +71,7 @@ const ejecutarAnalisisHabitos = async () => {
       { $sort: { conteo: -1 } },
       {
         $group: {
-          _id: "$_id.estudiante",
+          _id: "$_id.usuario", // Agrupamos por usuario para sacar su top 1
           rutaPreferida: { $first: "$_id.ruta" },
           horaPreferida: { $first: "$_id.hora" },
           viajesContados: { $first: "$conteo" },
@@ -80,14 +80,14 @@ const ejecutarAnalisisHabitos = async () => {
       {
         $lookup: {
           from: "users",
-          localField: "_id",
+          localField: "_id", // Al agrupar arriba por usuario, ahora _id SÍ es el ID del usuario
           foreignField: "_id",
           as: "infoEstudiante",
         },
       },
       {
         $project: {
-          _id: "$_id",
+          _id: "$_id", // Conservamos el ID del usuario como ID del documento de analítica
           nombreEstudiante: { $arrayElemAt: ["$infoEstudiante.nombre", 0] },
           prediccion: {
             ruta: "$rutaPreferida",
