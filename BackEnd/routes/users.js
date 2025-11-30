@@ -2,17 +2,18 @@
 
 const express = require("express");
 const router = express.Router();
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const User = require("../models/User");
+const Camion = require("../models/Camion");
 const bcrypt = require("bcryptjs");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 
 const estudianteSchema = new mongoose.Schema({
-    matricula: { type: String },
-    carrera: { type: String },
-    rutaPreferida: { type: String },
-    // ¡NUEVO! Guardamos la "dirección" para las notificaciones push
-    pushSubscription: { type: Object } 
+  matricula: { type: String },
+  carrera: { type: String },
+  rutaPreferida: { type: String },
+  // ¡NUEVO! Guardamos la "dirección" para las notificaciones push
+  pushSubscription: { type: Object },
 });
 
 // --- RUTA 1: Obtener TODOS los usuarios (para la tabla del admin) ---
@@ -60,6 +61,43 @@ router.post("/", protect, adminOnly, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+router.get("/mi-camion", protect, async (req, res) => {
+  try {
+    // 1. IMPORTANTE: Populate debe coincidir con el nombre del campo en tu User.js
+    const user = await User.findById(req.user._id).populate("conductor.vehiculoAsignado");
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // 2. Extraemos el camión
+    const camion = user.conductor ? user.conductor.vehiculoAsignado : null;
+
+    // DEBUG: Esto aparecerá en tu terminal (la pantalla negra donde corre el servidor)
+    console.log(`[DEBUG] Chofer: ${user.nombre} | Camión detectado:`, camion ? camion._id : "NINGUNO");
+
+    // 3. Si no hay camión o el populate falló (quedó solo el ID sin datos)
+    if (!camion || !camion.numeroUnidad) {
+       return res.json({
+         camionId: null,
+         placa: "",
+         numeroUnidad: ""
+       });
+    }
+
+    // 4. Éxito: Enviamos los datos
+    res.json({
+      camionId: camion._id,
+      placa: camion.placa,
+      numeroUnidad: camion.numeroUnidad
+    });
+
+  } catch (error) {
+    console.error("Error al buscar camión:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
   }
 });
 
@@ -122,49 +160,27 @@ router.get("/conductores", protect, adminOnly, async (req, res) => {
   }
 });
 
-// --- RUTA 5: Obtener el camión del conductor logueado (La que ya teníamos) ---
-router.get("/mi-camion", protect, async (req, res) => {
-  try {
-    if (req.user.tipo !== "conductor") {
-      return res.status(403).json({ message: "No eres un conductor" });
-    }
-
-    // ¡Importante! Revisamos que 'conductor' exista antes de leerlo
-    if (!req.user.conductor) {
-      return res
-        .status(404)
-        .json({ message: "Tu perfil de conductor no está completo." });
-    }
-
-    const camionId = req.user.conductor.vehiculoAsignado;
-    if (!camionId) {
-      return res.status(404).json({ message: "No tienes un camión asignado." });
-    }
-
-    res.json({ camionId: camionId });
-  } catch (error) {
-    res.status(500).json({ message: "Error del servidor" });
-  }
-});
-
 // --- RUTA: Eliminar Usuario ---
 // DELETE /api/users/:id
 router.delete("/:id", protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-    
+
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
     // Evitar que el admin se borre a sí mismo por error
     if (req.user._id.equals(user._id)) {
-        return res.status(400).json({ message: "No puedes eliminar tu propia cuenta de administrador" });
+      return res
+        .status(400)
+        .json({
+          message: "No puedes eliminar tu propia cuenta de administrador",
+        });
     }
 
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: "Usuario eliminado correctamente" });
-    
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error al eliminar el usuario" });

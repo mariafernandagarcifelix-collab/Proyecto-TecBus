@@ -202,47 +202,44 @@ router.get("/:id", protect, async (req, res) => {
 
 // --- RUTA 5: Editar una salida (CON MIGRACIÓN INTELIGENTE) ---
 router.put("/:id/salidas/:salidaId", protect, adminOnly, async (req, res) => {
-    const { id, salidaId } = req.params; // ID del documento horario actual y de la salida
-    const { hora, ruta, diaSemana } = req.body; // Datos nuevos que envía el formulario
+    const { id, salidaId } = req.params;
+    // AGREGADO: Recibir camion y conductor del body
+    const { hora, ruta, diaSemana, camionAsignado, conductorAsignado } = req.body; 
 
     try {
-        // 1. Buscamos el documento ORIGINAL completo para ver qué tenía
         const horarioOriginal = await Horario.findById(id);
         if (!horarioOriginal) return res.status(404).json({ message: "Horario original no encontrado" });
 
-        // 2. Buscamos la salida específica dentro de ese horario para rescatar sus datos
-        // (Necesitamos rescatar el camión y conductor asignados para no perderlos al mover)
         const salidaOriginal = horarioOriginal.salidas.find(s => s._id.toString() === salidaId);
         if (!salidaOriginal) return res.status(404).json({ message: "Salida no encontrada" });
 
-        // 3. VERIFICACIÓN CLAVE: ¿Cambió la ruta o el día?
-        // Convertimos a string para comparar ObjectId y Texto seguramente
         const rutaCambio = horarioOriginal.ruta.toString() !== ruta;
         const diaCambio = horarioOriginal.diaSemana !== diaSemana;
 
         if (!rutaCambio && !diaCambio) {
-            // CASO A: Solo cambió la hora (FÁCIL)
-            // Actualizamos ahí mismo sin mover nada
+            // CASO A: Solo cambiaron datos de la salida (hora, camión, conductor)
             await Horario.updateOne(
                 { "_id": id, "salidas._id": salidaId },
-                { $set: { "salidas.$.hora": hora } }
+                { 
+                    $set: { 
+                        "salidas.$.hora": hora,
+                        // AGREGADO: Actualizar también asignaciones
+                        "salidas.$.camionAsignado": camionAsignado || null,
+                        "salidas.$.conductorAsignado": conductorAsignado || null
+                    } 
+                }
             );
-            return res.json({ message: "Hora actualizada correctamente" });
+            return res.json({ message: "Salida actualizada correctamente" });
 
         } else {
-            // CASO B: MIGRACIÓN COMPLEJA (Cambió ruta o día)
-            // Estrategia: Borrar del viejo -> Buscar/Crear el nuevo -> Insertar en el nuevo
-
-            // B1. Borramos la salida del documento viejo
+            // CASO B: Cambió ruta o día (Mover salida)
             await Horario.updateOne(
                 { _id: id },
                 { $pull: { salidas: { _id: salidaId } } }
             );
 
-            // B2. Buscamos si ya existe el documento destino (Nueva Ruta + Nuevo Día)
             let horarioDestino = await Horario.findOne({ ruta: ruta, diaSemana: diaSemana });
 
-            // Si no existe el destino, lo creamos
             if (!horarioDestino) {
                 horarioDestino = new Horario({
                     ruta: ruta,
@@ -251,12 +248,11 @@ router.put("/:id/salidas/:salidaId", protect, adminOnly, async (req, res) => {
                 });
             }
 
-            // B3. Insertamos la salida en el destino
-            // Usamos los datos nuevos (hora) y RESCATAMOS los viejos (camión/conductor)
+            // Insertamos en el nuevo destino con los datos nuevos
             horarioDestino.salidas.push({
                 hora: hora,
-                camionAsignado: salidaOriginal.camionAsignado,
-                conductorAsignado: salidaOriginal.conductorAsignado
+                camionAsignado: camionAsignado || null,     // Usar el nuevo si viene, o null
+                conductorAsignado: conductorAsignado || null
             });
 
             await horarioDestino.save();
@@ -270,6 +266,7 @@ router.put("/:id/salidas/:salidaId", protect, adminOnly, async (req, res) => {
     }
 });
 
+// --- RUTA 6: Obtener horarios públicos de UNA RUTA específica ---
 router.get("/publico/:rutaId", protect, async (req, res) => {
   try {
     const { rutaId } = req.params;

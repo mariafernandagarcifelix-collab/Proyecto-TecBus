@@ -210,18 +210,24 @@ document.addEventListener("DOMContentLoaded", () => {
       // Dentro de cargarUsuarios()...
       usuariosCargados.forEach((user) => {
         const row = document.createElement("tr");
-        
+
         // CORRECCIÓN: Agregamos el botón de eliminar con estilo 'btn-danger'
         row.innerHTML = `
             <td>${user.nombre}</td>
             <td>${user.email}</td>
-            <td><span class="badge badge-${user.tipo === 'administrador' ? 'admin' : 'conductor'}">${user.tipo}</span></td>
-            <td>${user.estado || 'activo'}</td>
+            <td><span class="badge badge-${
+              user.tipo === "administrador" ? "admin" : "conductor"
+            }">${user.tipo}</span></td>
+            <td>${user.estado || "activo"}</td>
             <td>
-                <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${user._id}" title="Editar">
+                <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${
+                  user._id
+                }" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${user._id}" title="Eliminar">
+                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${
+                  user._id
+                }" title="Eliminar">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -345,8 +351,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Función para eliminar usuario
   async function handleDeleteUser(id) {
-    if (!confirm("¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.")) return;
-    
+    if (
+      !confirm(
+        "¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer."
+      )
+    )
+      return;
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/users/${id}`, {
         method: "DELETE",
@@ -359,7 +370,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       alert("✅ Usuario eliminado correctamente");
       cargarUsuarios(); // Recargar la lista
-      
     } catch (error) {
       console.error(error);
       alert("Error: " + error.message);
@@ -499,17 +509,14 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       try {
         // CAMBIO: BACKEND_URL
-        const response = await fetch(
-          `${BACKEND_URL}/api/camiones/${id}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(datos),
-          }
-        );
+        const response = await fetch(`${BACKEND_URL}/api/camiones/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(datos),
+        });
         if (!response.ok) throw new Error("No se pudo actualizar");
         alert("¡Camión actualizado!");
         closeEditCamionModal();
@@ -669,7 +676,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- 7. CRUD - HORARIOS ---
-  const formRegistrarHorario = document.getElementById("form-registrar-horario");
+  const formRegistrarHorario = document.getElementById(
+    "form-registrar-horario"
+  );
   const modalEditarHorario = document.getElementById("modal-editar-horario");
   const formEditarHorario = document.getElementById("form-editar-horario");
   const closeBtnHorario = modalEditarHorario?.querySelector(".close-button");
@@ -677,6 +686,62 @@ document.addEventListener("DOMContentLoaded", () => {
   // Variables para edición
   let editingSalidaId = null;
   let editingHorarioId = null;
+
+  if (formRegistrarHorario) {
+    formRegistrarHorario.addEventListener("submit", async (e) => {
+      // 1. Lo más importante: Detener la recarga de la página
+      e.preventDefault();
+      console.log("🛑 Submit interceptado, procesando registro...");
+
+      // Validación básica de campos visuales
+      const ruta = document.getElementById("horario-ruta").value;
+      const dia = document.getElementById("horario-dia").value;
+      const hora = document.getElementById("horario-hora").value;
+      const camion = document.getElementById("horario-camion").value;
+      const conductor = document.getElementById("horario-conductor").value;
+
+      if (!ruta || !dia || !hora || !camion || !conductor) {
+        alert("Por favor completa todos los campos");
+        return;
+      }
+
+      const datos = {
+        ruta: ruta,
+        diaSemana: dia,
+        hora: hora,
+        camionAsignado: camion,
+        conductorAsignado: conductor,
+      };
+
+      try {
+        const res = await fetch(BACKEND_URL + "/api/horarios", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(datos),
+        });
+
+        const dataRes = await res.json();
+
+        if (res.ok) {
+          alert("✅ ¡Horario registrado correctamente!");
+          formRegistrarHorario.reset();
+          // Volver a cargar las tablas
+          cargarHorarios();
+        } else {
+          console.error("Error backend:", dataRes);
+          alert(
+            "Error al registrar: " + (dataRes.message || "Error desconocido")
+          );
+        }
+      } catch (error) {
+        console.error("Error de red:", error);
+        alert("Error de conexión con el servidor.");
+      }
+    });
+  }
 
   async function cargarHorarios() {
     const tablaBody = document.getElementById("tabla-horarios-body");
@@ -693,7 +758,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       tablaBody.innerHTML = "";
       if (horarios.length === 0) {
-        tablaBody.innerHTML = '<tr><td colspan="6">No hay horarios registrados.</td></tr>';
+        tablaBody.innerHTML =
+          '<tr><td colspan="6">No hay horarios registrados.</td></tr>';
         return;
       }
 
@@ -704,7 +770,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <td><strong>${h.hora}</strong></td>
             <td>${h.rutaNombre || "N/A"}</td>
             <td>${h.camionUnidad || '<span class="text-muted">--</span>'}</td>
-            <td>${h.conductorNombre || '<span class="text-muted">--</span>'}</td>
+            <td>${
+              h.conductorNombre || '<span class="text-muted">--</span>'
+            }</td>
             <td>
                 <button class="btn btn-secondary btn-sm btn-edit-horario" 
                     data-id="${h._id}" 
@@ -726,19 +794,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  document.getElementById("tabla-horarios-body")?.addEventListener("click", (e) => {
+  document
+    .getElementById("tabla-horarios-body")
+    ?.addEventListener("click", (e) => {
       const btnEdit = e.target.closest(".btn-edit-horario");
       const btnDelete = e.target.closest(".btn-delete-horario");
 
       if (btnEdit) {
-          const { id, salidaId } = btnEdit.dataset;
-          abrirEditarHorario(id, salidaId);
+        const { id, salidaId } = btnEdit.dataset;
+        abrirEditarHorario(id, salidaId);
       }
       if (btnDelete) {
+        if (btnDelete) {
           const { id, salidaId } = btnDelete.dataset;
-          eliminarHorario(id, salidaId);
+          if (
+            confirm("⚠️ ¿Estás seguro de eliminar esta salida del horario?")
+          ) {
+            eliminarHorario(id, salidaId);
+          }
+        }
       }
-  });
+    });
 
   async function popularDropdownsHorarios(esEdicion = false) {
     const suffix = esEdicion ? "edit-horario" : "horario";
@@ -746,32 +822,57 @@ document.addEventListener("DOMContentLoaded", () => {
     const selCamion = document.getElementById(`${suffix}-camion`);
     const selConductor = document.getElementById(`${suffix}-conductor`);
 
-    if (esEdicion && !selRuta) return;
+    // Limpiar opciones previas
+    if (selRuta) selRuta.innerHTML = '<option value="">Cargando...</option>';
+    if (selCamion)
+      selCamion.innerHTML = '<option value="">Cargando...</option>';
+    if (selConductor)
+      selConductor.innerHTML = '<option value="">Cargando...</option>';
 
     try {
+      // Hacemos fetch de todo siempre para asegurar que los selects tengan datos
       const [resRutas, resCamiones, resConductores] = await Promise.all([
-        // CAMBIO: BACKEND_URL
-        fetch(BACKEND_URL + "/api/rutas", { headers: { Authorization: `Bearer ${token}` }}),
-        !esEdicion ? fetch(BACKEND_URL + "/api/camiones", { headers: { Authorization: `Bearer ${token}` }}) : null,
-        !esEdicion ? fetch(BACKEND_URL + "/api/users/conductores", { headers: { Authorization: `Bearer ${token}` }}) : null,
+        fetch(BACKEND_URL + "/api/rutas", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(BACKEND_URL + "/api/camiones", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(BACKEND_URL + "/api/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        }), // Endpoint general de usuarios, filtraremos en JS
       ]);
 
       const rutas = await resRutas.json();
-      selRuta.innerHTML = '<option value="">-- Elige una Ruta --</option>';
-      rutas.forEach((r) => {
-        if (r.activa) selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`;
-      });
+      const camiones = await resCamiones.json();
+      const usuarios = await resConductores.json();
 
-      if (!esEdicion && selCamion && selConductor) {
-        const camiones = await resCamiones.json();
-        const conductores = await resConductores.json();
+      // Filtrar solo conductores
+      const conductores = usuarios.filter((u) => u.tipo === "conductor");
 
+      // Llenar Ruta
+      if (selRuta) {
+        selRuta.innerHTML = '<option value="">-- Elige una Ruta --</option>';
+        rutas.forEach((r) => {
+          if (r.activa)
+            selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`;
+        });
+      }
+
+      // Llenar Camión (Ahora también funciona para el modal de edición)
+      if (selCamion) {
         selCamion.innerHTML = '<option value="">-- Elige un Camión --</option>';
         camiones.forEach((c) => {
-          if (c.estado === "activo") selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`;
+          // En edición mostramos todos, o solo activos. Aquí mostramos activos.
+          if (c.estado === "activo")
+            selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`;
         });
+      }
 
-        selConductor.innerHTML = '<option value="">-- Elige un Conductor --</option>';
+      // Llenar Conductor (Ahora también funciona para el modal de edición)
+      if (selConductor) {
+        selConductor.innerHTML =
+          '<option value="">-- Elige un Conductor --</option>';
         conductores.forEach((c) => {
           selConductor.innerHTML += `<option value="${c._id}">${c.nombre}</option>`;
         });
@@ -781,39 +882,124 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (formRegistrarHorario) {
-    formRegistrarHorario.addEventListener("submit", async (e) => {
+  async function abrirEditarHorario(horarioId, salidaId) {
+    // 1. Cargar listas desplegables
+    await popularDropdownsHorarios(true);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/horarios/${horarioId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("No se pudo obtener el horario");
+
+      const horarioDoc = await res.json();
+      const salida = horarioDoc.salidas.find((s) => s._id === salidaId);
+
+      if (!salida) throw new Error("Salida no encontrada en la base de datos");
+
+      // 2. Llenar el formulario del modal
+      document.getElementById("edit-horario-id").value = horarioId;
+      document.getElementById("edit-salida-id").value = salidaId;
+
+      // Variables globales para el submit
+      editingSalidaId = salidaId;
+      editingHorarioId = horarioId;
+
+      // Seteamos valores seleccionados
+      document.getElementById("edit-horario-ruta").value =
+        horarioDoc.ruta._id || horarioDoc.ruta;
+      document.getElementById("edit-horario-dia").value = horarioDoc.diaSemana;
+      document.getElementById("edit-horario-salida").value = salida.hora;
+      document.getElementById("edit-horario-camion").value =
+        salida.camionAsignado || "";
+      document.getElementById("edit-horario-conductor").value =
+        salida.conductorAsignado || "";
+
+      // 3. CONFIGURAR BOTÓN ELIMINAR DEL MODAL (CON CONFIRMACIÓN)
+      const btnDeleteModal = document.getElementById("btn-delete-from-modal");
+      if (btnDeleteModal) {
+        // Clonamos el botón para limpiar eventos anteriores (evita clicks múltiples)
+        const newBtn = btnDeleteModal.cloneNode(true);
+        btnDeleteModal.parentNode.replaceChild(newBtn, btnDeleteModal);
+
+        newBtn.addEventListener("click", async () => {
+          // ---> AQUÍ ESTÁ LA PREGUNTA DE SEGURIDAD <---
+          const confirmar = confirm(
+            "⚠️ ¿Estás SEGURO de que deseas eliminar este horario permanentemente?\nEsta acción no se puede deshacer."
+          );
+
+          if (confirmar) {
+            await eliminarHorario(horarioId, salidaId);
+            modalEditarHorario.classList.remove("modal-visible");
+          }
+        });
+      }
+
+      // Mostrar el modal
+      modalEditarHorario.classList.add("modal-visible");
+    } catch (error) {
+      console.error(error);
+      alert("Error al cargar datos: " + error.message);
+    }
+  }
+
+  // Función auxiliar para eliminar (para reutilizar lógica)
+  async function eliminarHorario(horarioId, salidaId) {
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/horarios/${horarioId}/salidas/${salidaId}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error("No se pudo eliminar");
+      alert("¡Salida eliminada!");
+      cargarHorarios();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  if (formEditarHorario) {
+    formEditarHorario.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const datos = {
-        ruta: document.getElementById("horario-ruta").value,
-        diaSemana: document.getElementById("horario-dia").value,
-        hora: document.getElementById("horario-hora").value,
-        camionAsignado: document.getElementById("horario-camion").value,
-        conductorAsignado: document.getElementById("horario-conductor").value,
+
+      const data = {
+        ruta: document.getElementById("edit-horario-ruta").value,
+        diaSemana: document.getElementById("edit-horario-dia").value,
+        hora: document.getElementById("edit-horario-salida").value,
+        // Enviamos los nuevos campos
+        camionAsignado: document.getElementById("edit-horario-camion").value,
+        conductorAsignado: document.getElementById("edit-horario-conductor")
+          .value,
       };
 
       try {
-        // CAMBIO: BACKEND_URL
-        const res = await fetch(BACKEND_URL + "/api/horarios", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(datos),
-        });
+        const res = await fetch(
+          `${BACKEND_URL}/api/horarios/${editingHorarioId}/salidas/${editingSalidaId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(data),
+          }
+        );
 
         if (res.ok) {
-          alert("¡Salida registrada!");
-          formRegistrarHorario.reset();
+          alert("✅ Horario actualizado correctamente");
+          modalEditarHorario.classList.remove("modal-visible");
           cargarHorarios();
         } else {
           const err = await res.json();
           alert("Error: " + err.message);
         }
       } catch (error) {
+        console.error(error);
         alert("Error de conexión");
       }
     });
   }
-
   async function handleDeleteHorario(id, salidaId) {
     if (!confirm("¿Eliminar esta salida del horario?")) return;
     try {
@@ -830,74 +1016,74 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function abrirEditarHorario(horarioId, salidaId) {
-    await popularDropdownsHorarios(true);
+  // async function abrirEditarHorario(horarioId, salidaId) {
+  //   await popularDropdownsHorarios(true);
 
-    try {
-      // CAMBIO: BACKEND_URL
-      const res = await fetch(`${BACKEND_URL}/api/horarios/${horarioId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const horarioDoc = await res.json();
-      const salida = horarioDoc.salidas.find((s) => s._id === salidaId);
+  //   try {
+  //     // CAMBIO: BACKEND_URL
+  //     const res = await fetch(`${BACKEND_URL}/api/horarios/${horarioId}`, {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     const horarioDoc = await res.json();
+  //     const salida = horarioDoc.salidas.find((s) => s._id === salidaId);
 
-      if (!salida) throw new Error("Salida no encontrada");
+  //     if (!salida) throw new Error("Salida no encontrada");
 
-      document.getElementById("edit-horario-id").value = horarioId;
-      editingSalidaId = salidaId;
-      editingHorarioId = horarioId;
+  //     document.getElementById("edit-horario-id").value = horarioId;
+  //     editingSalidaId = salidaId;
+  //     editingHorarioId = horarioId;
 
-      const selRuta = document.getElementById("edit-horario-ruta");
-      selRuta.value = horarioDoc.ruta._id || horarioDoc.ruta;
-      
-      const selDia = document.getElementById("edit-horario-dia");
-      selDia.value = horarioDoc.diaSemana; 
+  //     const selRuta = document.getElementById("edit-horario-ruta");
+  //     selRuta.value = horarioDoc.ruta._id || horarioDoc.ruta;
 
-      document.getElementById("edit-horario-salida").value = salida.hora;
-      document.getElementById("edit-horario-llegada").value = "";
+  //     const selDia = document.getElementById("edit-horario-dia");
+  //     selDia.value = horarioDoc.diaSemana;
 
-      modalEditarHorario.classList.add("modal-visible");
-    } catch (error) {
-      console.error(error);
-      alert("Error al cargar datos");
-    }
-  }
+  //     document.getElementById("edit-horario-salida").value = salida.hora;
+  //     document.getElementById("edit-horario-llegada").value = "";
 
-  if (formEditarHorario) {
-    formEditarHorario.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        
-        const data = {
-            ruta: document.getElementById("edit-horario-ruta").value,
-            diaSemana: document.getElementById("edit-horario-dia").value,
-            hora: document.getElementById("edit-horario-salida").value
-        };
+  //     modalEditarHorario.classList.add("modal-visible");
+  //   } catch (error) {
+  //     console.error(error);
+  //     alert("Error al cargar datos");
+  //   }
+  // }
 
-        try {
-            // CAMBIO: BACKEND_URL
-            const res = await fetch(`${BACKEND_URL}/api/horarios/${editingHorarioId}/salidas/${editingSalidaId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(data)
-            });
+  // if (formEditarHorario) {
+  //   formEditarHorario.addEventListener("submit", async (e) => {
+  //       e.preventDefault();
 
-            if (res.ok) {
-                alert('✅ Horario actualizado correctamente');
-                modalEditarHorario.classList.remove("modal-visible");
-                cargarHorarios();
-            } else {
-                const err = await res.json();
-                alert('Error: ' + err.message);
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Error de conexión");
-        }
-    });
-  }
+  //       const data = {
+  //           ruta: document.getElementById("edit-horario-ruta").value,
+  //           diaSemana: document.getElementById("edit-horario-dia").value,
+  //           hora: document.getElementById("edit-horario-salida").value
+  //       };
+
+  //       try {
+  //           // CAMBIO: BACKEND_URL
+  //           const res = await fetch(`${BACKEND_URL}/api/horarios/${editingHorarioId}/salidas/${editingSalidaId}`, {
+  //               method: 'PUT',
+  //               headers: {
+  //                   'Content-Type': 'application/json',
+  //                   'Authorization': `Bearer ${token}`
+  //               },
+  //               body: JSON.stringify(data)
+  //           });
+
+  //           if (res.ok) {
+  //               alert('✅ Horario actualizado correctamente');
+  //               modalEditarHorario.classList.remove("modal-visible");
+  //               cargarHorarios();
+  //           } else {
+  //               const err = await res.json();
+  //               alert('Error: ' + err.message);
+  //           }
+  //       } catch (error) {
+  //           console.error(error);
+  //           alert("Error de conexión");
+  //       }
+  //   });
+  // }
 
   if (closeBtnHorario) {
     closeBtnHorario.onclick = () => {
@@ -985,17 +1171,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const id = document.getElementById("edit-ruta-mapa-id").value;
       try {
         // CAMBIO: BACKEND_URL
-        const response = await fetch(
-          `${BACKEND_URL}/api/rutas/${id}/paradas`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ paradas: paradasTemporales }),
-          }
-        );
+        const response = await fetch(`${BACKEND_URL}/api/rutas/${id}/paradas`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ paradas: paradasTemporales }),
+        });
         if (!response.ok) throw new Error("No se pudo guardar el trazado");
         alert("¡Trazado de ruta guardado!");
         closeEditRutaMapaModal();
@@ -1026,7 +1209,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const alertas = await response.json();
 
-      tablaBody.innerHTML = ""; 
+      tablaBody.innerHTML = "";
       if (alertas.length === 0) {
         tablaBody.innerHTML =
           '<tr><td colspan="4">No hay alertas registradas.</td></tr>';

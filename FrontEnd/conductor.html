@@ -35,7 +35,7 @@
       <div class="menu-icon"><i class="fas fa-bars"></i></div>
       <div class="header-title">
         <h1>Panel de Conductor</h1>
-        <p>Camión A-101</p>
+        <p id="header-bus-display">Cargando unidad...</p>
       </div>
       <div class="profile-dropdown">
         <i class="fas fa-user-circle profile-icon" id="profile-toggle"></i>
@@ -56,11 +56,15 @@
 
       <div class="driver-info-panel card-panel">
         <div class="route-status">
-          <span class="route-name">Ruta 1 - Centro</span>
-          <span class="status-indicator">● En Servicio</span>
+          <div style="margin-bottom: 5px;">
+            <strong id="driver-bus-display" style="font-size: 1.1em;">Cargando unidad...</strong>
+          </div>
+          <span class="route-name" id="driver-route-display">Cargando ruta...</span>
+          <br>
+          <span class="status-indicator" id="service-status">● Verificando...</span>
         </div>
         <div class="students-count">
-          En espera: <span id="espera-count">3</span>
+          En espera: <span id="espera-count">0</span>
         </div>
       </div>
 
