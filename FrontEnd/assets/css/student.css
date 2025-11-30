@@ -2,6 +2,14 @@
  * Layout principal para la página del estudiante
  * Esto asegura que el mapa ocupe toda la pantalla.
 */
+:root {
+    --color-fondo-modal: #1e1e1e;
+    --color-borde-modal: #333;
+    --color-texto-modal: #e0e0e0;
+    --color-item-bg: #2a2a2a;
+    --color-acento-modal: #007bff; /* Azul TecBus */
+}
+
 body#student-body {
   display: flex;
   flex-direction: column;
@@ -245,3 +253,537 @@ header {
   margin-right: 10px;
   color: var(--color-error); /* Color rojo para salir */
 }
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 3000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85); /* Fondo más oscuro */
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.modal.show {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* --- MODAL (Actualizado para mayor altura) --- */
+.modal-content {
+    background-color: var(--color-fondo-modal);
+    padding: 25px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px; /* Un poco más ancho */
+    
+    /* --- CAMBIOS DE ALTURA --- */
+    min-height: 60vh; /* Mínimo el 60% de la altura de la pantalla */
+    max-height: 90vh; /* Máximo el 90% (para que no se salga) */
+    display: flex;
+    flex-direction: column; /* Para organizar título, contenido y pie */
+    overflow-y: auto; /* Scroll si el contenido es muy largo */
+    
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+    border: 1px solid var(--color-borde-modal);
+    position: relative;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+    color: var(--color-texto-modal);
+}
+
+/* Ajuste para centrar verticalmente el contenido del perfil si sobra espacio */
+.profile-card {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; 
+}
+
+/* --- LISTA DE HORARIOS (Expandible) --- */
+.horarios-lista {
+    list-style: none;
+    padding: 0;
+    margin-top: 15px;
+    
+    /* Hacemos que la lista ocupe el espacio disponible */
+    flex-grow: 1; 
+    overflow-y: auto; /* Scroll independiente para la lista */
+    
+    /* Estética del scrollbar */
+    padding-right: 5px; 
+}
+
+/* Scrollbar personalizado para que se vea bien en modo oscuro */
+.modal-content::-webkit-scrollbar,
+.horarios-lista::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-content::-webkit-scrollbar-track,
+.horarios-lista::-webkit-scrollbar-track {
+    background: #2a2a2a;
+    border-radius: 4px;
+}
+.modal-content::-webkit-scrollbar-thumb,
+.horarios-lista::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+.modal-content::-webkit-scrollbar-thumb:hover,
+.horarios-lista::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primario);
+}
+
+.modal.show .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-borde-modal);
+    padding-bottom: 10px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: var(--color-acento-modal);
+    font-size: 1.5rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+/* --- LISTA DE HORARIOS --- */
+.horarios-lista {
+    list-style: none;
+    padding: 0;
+    margin-top: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Scrollbar personalizado oscuro */
+.horarios-lista::-webkit-scrollbar {
+    width: 8px;
+}
+.horarios-lista::-webkit-scrollbar-track {
+    background: #2a2a2a;
+}
+.horarios-lista::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.horario-grupo-dia {
+    margin-bottom: 15px;
+}
+
+.dia-titulo {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #aaa;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    border-left: 3px solid var(--color-acento-modal);
+    padding-left: 10px;
+}
+
+.horario-item {
+    background: var(--color-item-bg);
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--color-borde-modal);
+}
+
+.horario-hora {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.horario-camion {
+    font-size: 0.9rem;
+    color: #bbb;
+    background-color: rgba(255,255,255,0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.horario-vacio {
+    text-align: center;
+    color: #888;
+    padding: 30px;
+    font-style: italic;
+}
+
+/* Estilos para el select dentro del modal oscuro */
+.modal-content select {
+    background-color: #2a2a2a;
+    color: white;
+    border: 1px solid #444;
+}
+
+/* --- MENÚ LATERAL (Estilo Admin) --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    background-color: var(--color-superficie); /* Gris oscuro/negro del admin */
+    display: flex;
+    flex-direction: column;
+    z-index: 2000;
+    box-shadow: 3px 0 15px rgba(0, 0, 0, 0.5);
+    transform: translateX(-100%); /* Oculto por defecto */
+    transition: transform 0.3s ease-out;
+}
+
+.sidebar.active {
+    transform: translateX(0); /* Visible */
+}
+
+/* Área del Logo/Título en el menú */
+.logo-area {
+    padding: 25px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--color-secundario);
+    position: relative;
+}
+
+.logo-area h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--color-texto);
+}
+
+.logo-area p {
+    margin: 5px 0 0;
+    font-size: 0.9rem;
+    color: var(--color-texto-gris);
+}
+
+/* Botón cerrar dentro del menú (estilo flotante o esquina) */
+.sidebar-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--color-texto-gris);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* Navegación Principal */
+.main-nav {
+    flex-grow: 1;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Items del Menú (Iguales al Admin) */
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 25px;
+    color: var(--color-texto-gris);
+    text-decoration: none;
+    transition: all 0.3s;
+    border-left: 5px solid transparent;
+    font-size: 1rem;
+}
+
+.nav-item i {
+    margin-right: 15px;
+    font-size: 1.2rem;
+    width: 25px;
+    text-align: center;
+}
+
+.nav-item:hover, .nav-item.active {
+    background-color: #2a2a2a; /* Fondo hover del admin */
+    color: white;
+    border-left-color: var(--color-primario); /* Borde azul/verde */
+}
+
+.nav-item.logout {
+    color: #ff6b6b;
+}
+.nav-item.logout:hover {
+    background-color: rgba(255, 107, 107, 0.1);
+    border-left-color: #ff6b6b;
+}
+
+.sidebar-footer {
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid var(--color-secundario);
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/* --- TARJETA DE PERFIL (Dentro del Modal) --- */
+.profile-card {
+    text-align: center;
+    padding: 10px;
+}
+
+.profile-avatar {
+    font-size: 4rem;
+    color: var(--color-primario);
+    margin-bottom: 15px;
+}
+
+.profile-info-group {
+    text-align: left;
+    margin-top: 20px;
+    background-color: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #444;
+}
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: bold;
+    color: #aaa;
+}
+.info-value {
+    color: white;
+}
+
+/* --- VISTA PANTALLA COMPLETA (FULLSCREEN OVERLAY) --- */
+.fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-fondo); /* Fondo oscuro principal */
+    z-index: 5000; /* Por encima de todo */
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%); /* Oculto hacia abajo */
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+}
+
+.fullscreen-overlay.active {
+    transform: translateY(0); /* Mostrar */
+}
+
+/* Header del Fullscreen */
+.fullscreen-header {
+    background-color: var(--color-superficie);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-borde-modal);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-controls h2 {
+    margin: 0;
+    color: var(--color-texto);
+    font-size: 1.8rem;
+}
+
+.header-controls .logo-icon {
+    font-size: 2rem;
+    color: var(--color-primario);
+}
+
+.close-fs-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.close-fs-btn:hover {
+    background: var(--color-error);
+    border-color: var(--color-error);
+}
+
+/* Contenido Principal */
+.fullscreen-content {
+    flex-grow: 1;
+    padding: 40px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Selector Grande */
+.ruta-selector-container {
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.ruta-selector-container label {
+    display: block;
+    margin-bottom: 10px;
+    color: #aaa;
+    font-size: 1.1rem;
+}
+
+.big-select {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    background-color: var(--color-superficie);
+    color: white;
+    border: 2px solid var(--color-primario);
+    cursor: pointer;
+}
+
+/* --- CALENDARIO GRID (La parte visual clave) --- */
+.calendar-grid {
+    display: grid;
+    /* Grid responsivo: mínimo 200px por columna, si caben más se expanden */
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+    gap: 20px;
+    width: 100%;
+    max-width: 1400px;
+}
+
+/* Tarjeta de Día */
+.day-card {
+    background-color: var(--color-superficie);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transition: transform 0.3s;
+}
+
+.day-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-primario);
+}
+
+/* Encabezado del Día (Lunes, Martes...) */
+.day-header {
+    background-color: #252525;
+    padding: 15px;
+    text-align: center;
+    border-bottom: 2px solid var(--color-primario);
+}
+
+.day-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--color-primario);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Cuerpo de la tarjeta (Lista de horas) */
+.day-body {
+    padding: 15px;
+    flex-grow: 1;
+    min-height: 150px;
+}
+
+/* Items de Horario Individuales */
+.cal-item {
+    background-color: rgba(255,255,255,0.05);
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid var(--color-acento);
+}
+
+.cal-time {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.cal-bus {
+    font-size: 0.8rem;
+    color: #aaa;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.no-service {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    margin-top: 20px;
+}
+
+/* Mensaje inicial */
+.placeholder-text {
+    color: #666;
+    font-size: 1.5rem;
+    grid-column: 1 / -1;
+    text-align: center;
+    margin-top: 50px;
+}
+
+/* Scrollbar para el fullscreen */
+.fullscreen-content::-webkit-scrollbar { width: 10px; }
+.fullscreen-content::-webkit-scrollbar-track { background: #111; }
+.fullscreen-content::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }

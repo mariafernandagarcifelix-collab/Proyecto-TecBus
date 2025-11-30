@@ -4,80 +4,149 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mi Ruta - TECNM Guasave</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/student.css" />
+
     <script>
-      // Esta constante usa la IP de la laptop cuando el navegador la usa,
-      // y usa localhost cuando la IP es 127.0.0.1
       const BACKEND_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
         ? "http://localhost:5000"
-        : "http://${location.hostname}:5000";
-
-      // La URL para Socket.IO es el host (sin el puerto)
+        : `http://${location.hostname}:5000`;
       const SOCKET_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
         ? "http://localhost:5000"
-        : "http://${location.hostname}:5000";
+        : `http://${location.hostname}:5000`;
     </script>
   </head>
 
   <body id="student-body">
+    
     <header>
-      <div class="menu-icon"><i class="fas fa-bars"></i></div>
+      <div class="menu-icon" id="btn-menu-toggle">
+        <i class="fas fa-bars"></i>
+      </div>
       <div class="header-title">
         <h1>TECNM Guasave</h1>
         <p>Transporte Estudiantil</p>
       </div>
       <div class="profile-dropdown">
         <i class="fas fa-user-circle profile-icon" id="profile-toggle"></i>
-
         <div class="dropdown-content" id="profile-menu">
           <div class="dropdown-header">
-            Hola, <span id="user-name-display">Usuario</span>
+            Hola, <span id="user-name-display">Estudiante</span>
           </div>
-          <a href="#" id="logout-button">
-            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-          </a>
+          <a href="#" id="btn-open-perfil-header"><i class="fas fa-id-card"></i> Ver Datos</a>
+          <a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
         </div>
       </div>
     </header>
 
+    <div id="sidebar" class="sidebar">
+        <div class="logo-area">
+            <button class="sidebar-close-btn" id="btn-menu-close"><i class="fas fa-times"></i></button>
+            <i class="fas fa-bus-alt" style="font-size: 2rem; color: var(--color-primario); margin-bottom:10px;"></i>
+            <h2>TecBus</h2>
+            <p>Panel de Estudiante</p>
+        </div>
+
+        <nav class="main-nav">
+            <a href="#" class="nav-item active">
+                <i class="fas fa-map-marked-alt"></i> Mapa en Vivo
+            </a>
+            <a href="#" id="btn-open-horarios" class="nav-item">
+                <i class="fas fa-clock"></i> Consultar Horarios
+            </a>
+            <a href="#" id="btn-open-perfil-sidebar" class="nav-item">
+                <i class="fas fa-user-circle"></i> Mi Perfil
+            </a>
+            <a href="#" onclick="alert('Por ahora no hace nada oke?')" class="nav-item">
+                <i class="fas fa-question-circle"></i> Ayuda
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" id="sidebar-logout" class="nav-item logout">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </a>
+            <p style="margin-top:15px;">© 2025 TecBus PCFL</p>
+        </div>
+    </div>
+
+    <div id="fullscreen-horarios" class="fullscreen-overlay">
+        <div class="fullscreen-header">
+            <div class="header-controls">
+                <i class="fas fa-calendar-alt logo-icon"></i>
+                <h2>Calendario de Rutas</h2>
+            </div>
+            <button class="close-fs-btn" id="btn-cerrar-horarios">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+
+        <div class="fullscreen-content">
+            <div class="ruta-selector-container">
+                <label for="calendar-ruta-selector">Selecciona la ruta para ver su semana:</label>
+                <select id="calendar-ruta-selector" class="big-select">
+                    <option value="">-- Elige una ruta --</option>
+                </select>
+            </div>
+
+            <div id="calendario-semanal" class="calendar-grid">
+                <p class="placeholder-text">Selecciona una ruta arriba para cargar el calendario.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-perfil" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mi Perfil</h2>
+                <button class="close-btn" id="btn-perfil-close"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="profile-card">
+                <i class="fas fa-user-graduate profile-avatar"></i>
+                <h3 id="perfil-nombre-completo" style="color:white; margin-bottom:5px;">Cargando...</h3>
+                <p id="perfil-rol" style="color:var(--color-primario); text-transform: uppercase; font-size:0.9rem;">ESTUDIANTE</p>
+
+                <div class="profile-info-group">
+                    <div class="info-row">
+                        <span class="info-label">Correo:</span>
+                        <span class="info-value" id="perfil-correo">...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">ID Usuario:</span>
+                        <span class="info-value" id="perfil-id">...</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary-lg" style="margin-top:20px; width:100%;" onclick="document.getElementById('btn-perfil-close').click()">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="map-container">
       <div id="map"></div>
-
       <div class="map-controls card-panel">
-        <label for="camion-selector" class="control-label"
-          >🚚 Selecciona tu Ruta</label
-        >
-        <select id="camion-selector" class="custom-select">
-          <option value="">Elige una ruta...</option>
-          <option value="A-101">Camión A-101 (Ruta Centro)</option>
-          <option value="B-205">Camión B-205 (Ruta Colonia)</option>
-          <option value="C-303">Camión C-303 (Ruta Periférico)</option>
+        <label for="ruta-selector" class="control-label">🚚 Selecciona tu Ruta</label>
+        <select id="ruta-selector" class="custom-select">
+          <option value="">Cargando rutas disponibles...</option>
         </select>
       </div>
-
       <div class="action-panel card-panel">
         <button id="btn-estoy-aqui" class="btn btn-primary-lg">
           <i class="fas fa-location-arrow"></i> Notificar mi Parada
         </button>
         <button id="btn-ver-historial" class="btn btn-secondary-sm">
-          <i class="fas fa-history"></i> Ver Historial de Viajes
+          <i class="fas fa-history"></i> Ver Historial
         </button>
       </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
     <script src="assets/js/student_map.js"></script>
   </body>
 </html>
