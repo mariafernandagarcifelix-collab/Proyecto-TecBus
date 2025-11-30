@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 
 // Importamos los modelos
 const HistorialUbicacion = require("../models/HistorialUbicacion");
-const HistorialViaje = require("../models/HistorialViaje");
+const HistorialViaje = require("../models/HistorialBusqueda");
 
 // --- ¡NUEVO! Lógica de la Consulta 3 extraída a su propia función ---
 const ejecutarAnalisisVelocidad = async () => {

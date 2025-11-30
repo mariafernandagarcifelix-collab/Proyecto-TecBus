@@ -18,6 +18,7 @@ const rutaRoutes = require("./routes/rutas");
 const horarioRoutes = require("./routes/horarios");
 const userRoutes = require("./routes/users");
 const notificacionRoutes = require("./routes/notificaciones");
+const historialRoutes = require("./routes/historial");
 const { startAnalyticsJobs } = require("./analytics/cronJobs");
 
 // 2. Inicializar la aplicación
@@ -60,6 +61,7 @@ app.use("/api/rutas", rutaRoutes);
 app.use("/api/horarios", horarioRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
+app.use('/api/historial', historialRoutes);
 
 // 6. LÓGICA DE SOCKET.IO (TIEMPO REAL)
 io.on("connection", (socket) => {

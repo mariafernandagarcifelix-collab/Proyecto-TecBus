@@ -4,6 +4,8 @@ const express = require("express");
 const router = express.Router();
 const Camion = require("../models/Camion"); // Importamos el modelo
 const { protect, adminOnly } = require("../middleware/authMiddleware"); // Importamos el guardaespaldas
+const HistorialBusqueda = require("../models/HistorialBusqueda");
+const Notificacion = require("../models/Notificacion");
 
 // --- RUTA 1: Obtener TODOS los camiones (para la tabla del admin) ---
 // GET /api/camiones
@@ -150,6 +152,118 @@ router.put("/update-location", async (req, res) => {
   } catch (error) {
     console.error("❌ Error actualizando ubicación:", error);
     res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// Función auxiliar para calcular distancia en metros (Haversine)
+function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+  var R = 6371; // Radio de la tierra en km
+  var dLat = deg2rad(lat2 - lat1);
+  var dLon = deg2rad(lon2 - lon1);
+  var a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  var d = R * c; // Distancia en km
+  return d * 1000; // Distancia en metros
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
+// --- RUTA ESPECIAL PARA ESP32 (MODIFICADA) ---
+router.put("/update-location", async (req, res) => {
+  try {
+    const { busId, lat, lng, speed } = req.body;
+
+    // 1. Actualizar Camión (Código original)
+    const camion = await Camion.findOneAndUpdate(
+      { numeroUnidad: busId },
+      {
+        ubicacionActual: { type: "Point", coordinates: [lng, lat] },
+        velocidad: speed,
+        ultimaActualizacion: new Date(),
+      },
+      { new: true }
+    ).populate("rutaAsignada");
+
+    if (!camion) return res.status(404).json({ message: "Camión no encontrado" });
+
+    // 2. Emitir Socket (Código original)
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("locationUpdate", {
+        camionId: camion._id,
+        numeroUnidad: camion.numeroUnidad,
+        location: { lat, lng },
+        velocidad: speed
+      });
+    }
+
+    // ============================================================
+    // 3. ANÁLISIS PREDICTIVO E INTELIGENTE (LO NUEVO)
+    // ============================================================
+    
+    if (camion.rutaAsignada) {
+        const fecha = new Date();
+        // Hora actual del servidor (aproximada a la del usuario)
+        const horaActual = fecha.getHours(); 
+        
+        // A. Buscar patrones: Usuarios que han buscado esta ruta a esta hora > 4 veces
+        // Buscamos en el historial coincidencias de ruta
+        const historialRelevante = await HistorialBusqueda.aggregate([
+            { $match: { ruta: camion.rutaAsignada._id } },
+            // Filtrar por hora (lógica simple: misma hora del día)
+            // Nota: Para producción se recomienda comparar rangos de tiempo más precisos
+            { $addFields: { 
+                horaNum: { $toInt: { $substr: ["$horaBusqueda", 0, 2] } } 
+            }},
+            { $match: { horaNum: horaActual } }, // Solo búsquedas hechas en esta hora (ej: las 14:00)
+            { $group: {
+                _id: "$usuario",
+                totalBusquedas: { $sum: 1 },
+                ultimoOrigen: { $last: "$ubicacionOrigen" } // Tomamos la última ubicación conocida
+            }},
+            { $match: { totalBusquedas: { $gte: 4 } } } // REGLA: Más de 4 veces
+        ]);
+
+        // B. Verificar Distancia y Notificar
+        for (const patron of historialRelevante) {
+            const userOrigen = patron.ultimoOrigen;
+            
+            if (userOrigen && userOrigen.lat && userOrigen.lng) {
+                const distancia = getDistanceFromLatLonInM(lat, lng, userOrigen.lat, userOrigen.lng);
+                
+                // REGLA: Si está a menos de 200 metros
+                if (distancia <= 200) {
+                    console.log(`✨ PREDICCIÓN: Camión cerca de usuario ${patron._id} (${Math.round(distancia)}m)`);
+                    
+                    // Aquí disparas la notificación PUSH real
+                    // sendNotificationToUser(patron._id, "¡Tu ruta habitual está llegando!");
+                    
+                    // Guardamos notificación en DB para historial
+                    await Notificacion.create({
+                        usuario: patron._id,
+                        mensaje: `El camión de la ruta ${camion.rutaAsignada.nombre} está a ${Math.round(distancia)}m.`,
+                        leida: false
+                    });
+                    
+                    // Emitir alerta socket personal (si está conectado)
+                    if(io) io.to(patron._id.toString()).emit("smartAlert", {
+                        mensaje: `🚍 Tu ruta habitual (${camion.rutaAsignada.nombre}) está llegando.`
+                    });
+                }
+            }
+        }
+    }
+
+    res.status(200).send("Ubicacion actualizada y analisis completado");
+
+  } catch (error) {
+    console.error("❌ Error:", error);
+    res.status(500).json({ message: "Error interno" });
   }
 });
 
