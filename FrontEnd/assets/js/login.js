@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
       '<i class="fas fa-spinner fa-spin"></i> Ingresando...';
 
     try {
-      const response = await fetch("http://192.168.0.91:5000/api/auth/login", {
+      const response = await fetch(BACKEND_URL + "/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

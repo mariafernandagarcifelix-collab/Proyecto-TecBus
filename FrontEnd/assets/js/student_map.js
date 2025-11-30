@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const socket = io(SOCKET_URL);
   let busMarkers = {},
     rutaPolyline = null;
+  let currentTrackedBusId = null;
 
   const map = L.map("map").setView([initialLat, initialLng], initialZoom);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {

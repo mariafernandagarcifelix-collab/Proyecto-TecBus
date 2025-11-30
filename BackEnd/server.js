@@ -66,32 +66,54 @@ io.on("connection", (socket) => {
   console.log(`🔌 Nuevo cliente conectado: ${socket.id}`);
 
   // --- A. Actualización de Ubicación (Conductor -> Mapa) ---
+  // --- A. Actualización de Ubicación (Conductor -> Mapa) ---
   socket.on("driverLocationUpdate", async (data) => {
+    // console.log("📍 Recibiendo coordenadas:", data.camionId); // Descomenta para depurar
+
     try {
-        // Solo actualizamos si es un ID válido, para evitar errores
-        if (mongoose.Types.ObjectId.isValid(data.camionId)) {
-             const camion = await Camion.findByIdAndUpdate(
-                data.camionId,
-                {
-                  ubicacionActual: {
-                    type: "Point",
-                    coordinates: [data.location.lng, data.location.lat],
-                  },
-                  ultimaActualizacion: Date.now(),
-                },
-                { new: true }
-              );
-        
-              if (camion) {
-                io.emit("locationUpdate", {
-                  camionId: camion._id,
-                  numeroUnidad: camion.numeroUnidad,
-                  location: data.location,
-                });
-              }
+      let idParaActualizar = null;
+
+      // 1. ¿Es un ID válido de MongoDB?
+      if (mongoose.Types.ObjectId.isValid(data.camionId)) {
+        idParaActualizar = data.camionId;
+      } else {
+        // 2. Si no, buscamos el camión por su número (ej: "TEC-01")
+        const camionEncontrado = await Camion.findOne({ numeroUnidad: data.camionId });
+        if (camionEncontrado) {
+          idParaActualizar = camionEncontrado._id;
         }
+      }
+
+      if (idParaActualizar) {
+        // 3. Actualizamos la base de datos
+        const camion = await Camion.findByIdAndUpdate(
+          idParaActualizar,
+          {
+            ubicacionActual: {
+              type: "Point",
+              coordinates: [data.location.lng, data.location.lat],
+            },
+            ultimaActualizacion: Date.now(),
+            estado: "activo" // Forzamos estado activo al moverse
+          },
+          { new: true }
+        );
+
+        // 4. Rebotamos la señal a los estudiantes/admin
+        if (camion) {
+          io.emit("locationUpdate", {
+            camionId: camion._id,
+            numeroUnidad: camion.numeroUnidad,
+            location: data.location,
+            heading: data.heading || 0 // Por si agregas rotación en el futuro
+          });
+        }
+      } else {
+        console.warn(`⚠️ Ignorando ubicación: Camión no identificado (${data.camionId})`);
+      }
+
     } catch (error) {
-      console.error("Error actualizando ubicación:", error.message);
+      console.error("❌ Error actualizando ubicación:", error.message);
     }
   });
 

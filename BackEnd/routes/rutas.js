@@ -4,6 +4,7 @@ const express = require("express");
 const router = express.Router();
 const Ruta = require("../models/Ruta"); // Importamos el modelo de Ruta
 const { protect, adminOnly } = require("../middleware/authMiddleware"); // Reusamos el guardaespaldas
+const Horario = require("../models/Horario");
 
 // --- RUTA 1: Obtener TODAS las rutas ---
 // GET /api/rutas
@@ -120,4 +121,69 @@ router.put("/:id/paradas", protect, adminOnly, async (req, res) => {
     res.status(500).json({ message: "Error del servidor" });
   }
 });
+
+router.get("/:id/proximo-camion", async (req, res) => {
+  try {
+    const rutaId = req.params.id;
+    
+    // 1. Obtener día y hora actual
+    const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const fechaActual = new Date();
+    const diaActual = dias[fechaActual.getDay()];
+    
+    // Convertimos hora actual a formato comparable (ej: 14 * 60 + 30 = 870 minutos)
+    const minutosActuales = fechaActual.getHours() * 60 + fechaActual.getMinutes();
+
+    // 2. Buscar horarios de HOY para esa ruta
+    const horarios = await Horario.find({ 
+        ruta: rutaId, 
+        diaSemana: diaActual 
+    }).populate("camionAsignado");
+
+    if (!horarios.length) {
+        return res.status(404).json({ message: "No hay horarios para esta ruta hoy." });
+    }
+
+    // 3. Encontrar el horario más cercano (el que tenga la menor diferencia de tiempo positiva)
+    // Si ya pasó la hora, buscamos el siguiente.
+    let horarioCercano = null;
+    let menorDiferencia = Infinity;
+
+    horarios.forEach(h => {
+        const [horas, mins] = h.hora.split(":").map(Number);
+        const minutosHorario = horas * 60 + mins;
+        
+        // Calculamos diferencia. Si es negativo, el camión ya salió hace mucho, 
+        // pero podemos dar un margen de 20 mins (el camión sigue en ruta)
+        let diferencia = minutosHorario - minutosActuales;
+
+        // Si la diferencia es negativa (ej: -10 mins), significa que acaba de salir.
+        // Lo consideramos válido si salió hace menos de 1 hora (sigue dando vueltas).
+        if (diferencia < 0 && diferencia > -60) { 
+             diferencia = Math.abs(diferencia); // Prioridad alta
+        } 
+
+        if (diferencia >= -60 && diferencia < menorDiferencia) {
+            menorDiferencia = diferencia;
+            horarioCercano = h;
+        }
+    });
+
+    if (!horarioCercano || !horarioCercano.camionAsignado) {
+         // Si no encontramos uno cercano, mandamos el primero del día o error
+         return res.status(404).json({ message: "No hay camiones circulando o asignados pronto." });
+    }
+
+    // 4. Devolvemos solo los datos del camión
+    res.json({
+        camion: horarioCercano.camionAsignado,
+        horaSalida: horarioCercano.hora
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error buscando camión de la ruta" });
+  }
+});
+
 module.exports = router;
