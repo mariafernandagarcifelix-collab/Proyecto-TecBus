@@ -411,21 +411,32 @@
 }
 
 /* --- Insignias (Badges) --- */
+/* --- Insignias (Badges) --- */
 .badge {
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 500;
+  text-transform: capitalize; /* Para que se vea bonito (Estudiante, Conductor) */
 }
-.badge-conductor {
+
+/* COLOR AZUL (Para Estudiantes) */
+.badge-estudiante {
   background-color: rgba(0, 123, 255, 0.2);
-  color: var(--color-primario);
+  color: #007bff; /* Azul estándar o var(--color-primario) */
 }
+
+/* COLOR VERDE (Para Administradores) */
 .badge-admin {
   background-color: rgba(40, 167, 69, 0.2);
   color: var(--color-exito);
 }
 
+/* ¡NUEVO! COLOR NARANJA (Para Conductores) */
+.badge-conductor {
+  background-color: rgba(255, 165, 0, 0.2); /* Fondo naranja transparente */
+  color: #ff8c00; /* Texto naranja oscuro */
+}
 /* ----------------------------------------------------- */
 /* 5. Responsividad (Móvil) - Backdrop */
 /* ----------------------------------------------------- */

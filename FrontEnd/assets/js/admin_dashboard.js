@@ -211,13 +211,45 @@ const LUGARES_CLAVE = [
   const modalUser = document.getElementById("edit-user-modal");
   const modalFormUser = document.getElementById("form-edit-user");
   const closeModalBtnUser = modalUser.querySelector(".close-button");
-  const camposConductor = document.getElementById("campos-conductor");
+  const camposConductorEdit = document.getElementById("campos-conductor"); // En modal editar
+  const formRegistrarUsuario = document.getElementById(
+    "form-registrar-usuario"
+  );
+  const userTipoSelect = document.getElementById("user-tipo"); // Select de registro
+  const camposConductorNew = document.getElementById(
+    "new-user-conductor-fields"
+  ); // Campos dinámicos registro
+
+  // Lógica para mostrar campos dinámicos en el REGISTRO
+  if (userTipoSelect) {
+    userTipoSelect.addEventListener("change", (e) => {
+      if (e.target.value === "conductor") {
+        camposConductorNew.style.display = "block";
+      } else {
+        camposConductorNew.style.display = "none";
+        // Limpiamos el valor si no es conductor
+        document.getElementById("user-licencia").value = "Si";
+      }
+    });
+  }
+
+  // Lógica para mostrar campos dinámicos en la EDICIÓN
+  const editUserTipoSelect = document.getElementById("edit-user-tipo");
+  if (editUserTipoSelect) {
+    editUserTipoSelect.addEventListener("change", (e) => {
+      if (e.target.value === "conductor") {
+        camposConductorEdit.style.display = "block";
+      } else {
+        camposConductorEdit.style.display = "none";
+      }
+    });
+  }
+
   async function cargarUsuarios() {
     const tablaBody = document.getElementById("tabla-usuarios-body");
     if (!tablaBody) return;
     tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
-      // CAMBIO: BACKEND_URL
       const response = await fetch(BACKEND_URL + "/api/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -229,17 +261,21 @@ const LUGARES_CLAVE = [
           '<tr><td colspan="5">No hay usuarios registrados.</td></tr>';
         return;
       }
-      // Dentro de cargarUsuarios()...
       usuariosCargados.forEach((user) => {
         const row = document.createElement("tr");
 
-        // CORRECCIÓN: Agregamos el botón de eliminar con estilo 'btn-danger'
+        // Determinamos la clase CSS según el tipo de usuario exacto
+        let badgeClass = "estudiante";
+        if (user.tipo === "administrador") {
+          badgeClass = "admin";
+        } else if (user.tipo === "conductor") {
+          badgeClass = "conductor";
+        }
+
         row.innerHTML = `
             <td>${user.nombre}</td>
             <td>${user.email}</td>
-            <td><span class="badge badge-${
-              user.tipo === "administrador" ? "admin" : "conductor"
-            }">${user.tipo}</span></td>
+            <td><span class="badge badge-${badgeClass}">${user.tipo}</span></td>
             <td>${user.estado || "activo"}</td>
             <td>
                 <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${
@@ -260,20 +296,26 @@ const LUGARES_CLAVE = [
       tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
     }
   }
-  const formRegistrarUsuario = document.getElementById(
-    "form-registrar-usuario"
-  );
+
+  // Registrar Usuario (Actualizado con licencia combo y sin camión)
   if (formRegistrarUsuario) {
     formRegistrarUsuario.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const tipo = document.getElementById("user-tipo").value;
+      
       const datos = {
         nombre: document.getElementById("user-nombre").value,
         email: document.getElementById("user-email").value,
         password: document.getElementById("user-password").value,
-        tipo: document.getElementById("user-tipo").value,
+        tipo: tipo,
       };
+
+      if (tipo === "conductor") {
+        datos.licencia = document.getElementById("user-licencia").value;
+        // Ya no enviamos vehiculoAsignado
+      }
+
       try {
-        // CAMBIO: BACKEND_URL
         const response = await fetch(BACKEND_URL + "/api/users", {
           method: "POST",
           headers: {
@@ -288,17 +330,20 @@ const LUGARES_CLAVE = [
         }
         alert("¡Usuario registrado!");
         formRegistrarUsuario.reset();
+        // Resetear visibilidad de campos extra
+        camposConductorNew.style.display = "none";
         cargarUsuarios();
       } catch (error) {
         alert(error.message);
       }
     });
   }
+
   const tablaBodyUsuarios = document.getElementById("tabla-usuarios-body");
   if (tablaBodyUsuarios) {
     tablaBodyUsuarios.addEventListener("click", (e) => {
       const btnEdit = e.target.closest(".btn-edit-user");
-      const btnDelete = e.target.closest(".btn-delete-user"); // ¡FALTABA ESTA LÍNEA!
+      const btnDelete = e.target.closest(".btn-delete-user");
 
       if (btnEdit) {
         const user = usuariosCargados.find((u) => u._id === btnEdit.dataset.id);
@@ -310,46 +355,57 @@ const LUGARES_CLAVE = [
       }
     });
   }
+
+  // Abrir Modal Editar (Actualizado)
   async function openEditUserModal(user) {
     document.getElementById("edit-user-id").value = user._id;
     document.getElementById("edit-user-nombre").value = user.nombre;
     document.getElementById("edit-user-email").value = user.email;
     document.getElementById("edit-user-tipo").value = user.tipo;
     document.getElementById("edit-user-estado").value = user.estado;
+
     if (user.tipo === "conductor") {
-      camposConductor.style.display = "block";
-      document.getElementById("edit-user-licencia").value =
-        user.conductor?.licencia || "";
-      const selCamion = document.getElementById("edit-user-camion");
-      selCamion.innerHTML = '<option value="">-- Ninguno --</option>';
-      if (camionesCargados.length === 0) await cargarCamiones();
-      camionesCargados.forEach((c) => {
-        selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`;
-      });
-      selCamion.value = user.conductor?.vehiculoAsignado || "";
+      camposConductorEdit.style.display = "block";
+      // Mapeamos el valor de licencia al combo Si/No si ya existe, o defecto Si
+      const licenciaVal = user.conductor?.licencia ? "Si" : "No"; 
+      // Nota: Si guardabas un string como "12345" antes, esto lo pondrá como "Si". 
+      // Si guardabas "Si"/"No", funcionará directo.
+      // Ajusta si tu backend guarda el número de licencia real. 
+      // Como pediste que sea Si/No, asumimos que ahora guardas eso.
+      document.getElementById("edit-user-licencia").value = user.conductor?.licencia || "No";
+      
+      // Ya no cargamos camiones aquí.
     } else {
-      camposConductor.style.display = "none";
+      camposConductorEdit.style.display = "none";
     }
     modalUser.classList.add("modal-visible");
   }
+
   function closeEditUserModal() {
     modalUser.classList.remove("modal-visible");
   }
   if (closeModalBtnUser) closeModalBtnUser.onclick = closeEditUserModal;
+
+  // Enviar Edición (Actualizado)
   if (modalFormUser) {
     modalFormUser.addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = document.getElementById("edit-user-id").value;
+      const tipo = document.getElementById("edit-user-tipo").value;
+
       const datos = {
         nombre: document.getElementById("edit-user-nombre").value,
         email: document.getElementById("edit-user-email").value,
-        tipo: document.getElementById("edit-user-tipo").value,
+        tipo: tipo,
         estado: document.getElementById("edit-user-estado").value,
-        licencia: document.getElementById("edit-user-licencia").value,
-        vehiculoAsignado: document.getElementById("edit-user-camion").value,
       };
+
+      if (tipo === "conductor") {
+        datos.licencia = document.getElementById("edit-user-licencia").value;
+        // Eliminado vehiculoAsignado
+      }
+
       try {
-        // CAMBIO: BACKEND_URL
         const response = await fetch(`${BACKEND_URL}/api/users/${id}`, {
           method: "PUT",
           headers: {
@@ -391,13 +447,12 @@ const LUGARES_CLAVE = [
       if (!response.ok) throw new Error(data.message || "No se pudo eliminar");
 
       alert("✅ Usuario eliminado correctamente");
-      cargarUsuarios(); // Recargar la lista
+      cargarUsuarios();
     } catch (error) {
       console.error(error);
       alert("Error: " + error.message);
     }
   }
-
   // --- 5. CRUD - CAMIONES ---
   const modalCamion = document.getElementById("edit-camion-modal");
   const modalFormCamion = document.getElementById("form-edit-camion");
