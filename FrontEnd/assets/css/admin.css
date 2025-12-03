@@ -85,9 +85,53 @@
   color: var(--color-primario);
 }
 
+/* --- FOOTER DEL SIDEBAR (CERRAR SESIÓN ROJO) --- */
+
 .sidebar-footer {
-  padding: 20px 0;
-  border-top: 1px solid var(--color-secundario);
+    padding: 10px;
+    border-top: 1px solid #333; /* Línea separadora sutil */
+    margin-top: auto; /* Empujar al fondo del sidebar */
+    background-color: rgba(0,0,0,0.2); /* Fondo ligeramente más oscuro */
+    padding-top: 30px;
+}
+
+/* Estilo base del botón rojo */
+.sidebar-footer .nav-item {
+    color: #ff6b6b; /* Rojo claro */
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid transparent; /* Para evitar saltos al hacer hover */
+    transition: all 0.3s ease;
+    margin: 0; /* Resetear márgenes si los hubiera */
+}
+
+/* Icono del botón */
+.sidebar-footer .nav-item i {
+    color: #ff6b6b;
+    margin-right: 10px;
+    transition: 0.3s;
+}
+
+/* Efecto Hover (Al pasar el mouse) */
+.sidebar-footer .nav-item:hover {
+    background-color: rgba(231, 76, 60, 0.15); /* Fondo rojo transparente */
+    color: #e74c3c; /* Rojo más intenso */
+    border-color: rgba(231, 76, 60, 0.3);
+    transform: translateY(-2px); /* Pequeña elevación */
+    box-shadow: 0 4px 8px rgba(231, 76, 60, 0.2);
+}
+
+.sidebar-footer .nav-item:hover i {
+    color: #e74c3c;
+}
+
+/* Estilo Active (por si acaso se queda seleccionado) */
+.sidebar-footer .nav-item.active {
+    background-color: var(--color-error);
+    color: white;
+}
+.sidebar-footer .nav-item.active i {
+    color: white;
 }
 
 /* --- ÁREA DE CONTENIDO (Mobile First) --- */
@@ -881,6 +925,19 @@
 .suggestions-list li i {
     color: #aaa;
     font-size: 0.8rem;
+}
+
+/* --- Texto de Copyright en el Footer --- */
+.footer-copyright {
+    text-align: center;       /* Centrado horizontal */
+    font-size: 0.75rem;       /* Texto pequeño */
+    color: #666;              /* Color gris discreto */
+    margin-top: 15px;         /* Espacio entre el botón rojo y el texto */
+    margin-bottom: 5px;
+    font-weight: 400;
+    opacity: 0.8;
+    display: block;
+    margin-bottom: 30px;
 }
 
 /* Scrollbar bonito para la lista */
