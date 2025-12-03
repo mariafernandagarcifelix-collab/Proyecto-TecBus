@@ -22,9 +22,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const initialLat = 25.567;
   const initialLng = -108.473;
   const initialZoom = 13;
+  
+  // Variables de Estado
   let MI_CAMION_ID = null;
-  let MI_RUTA_NOMBRE = "Sin Ruta Asignada";
-  let geoWatchId = null;
+  let MIS_VIAJES_HOY = [];        // Lista de todos los viajes del día ordenados
+  let INDICE_VIAJE_ACTUAL = -1;   // En qué viaje voy (0, 1, 2...)
+  
+  // Variables de Geofencing (Detección de Llegada)
+  let DESTINO_ACTUAL = null;      // { lat: ..., lng: ... } del punto final
+  let LLEGADA_DETECTADA = false;  // Para evitar que la alerta suene 50 veces
+  let RADIO_DETECCION_METROS = 150; // Distancia para considerar que "Llegó"
 
   // Elementos UI Principales
   const busDisplay = document.getElementById("driver-bus-display");
@@ -39,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Conexión Socket.IO
   const socket = io(SOCKET_URL);
+  let geoWatchId = null;
   socket.on("connect", () => {
     console.log("🔌 Conectado al servidor de sockets con ID:", socket.id);
   });
@@ -63,6 +71,253 @@ document.addEventListener("DOMContentLoaded", () => {
     .addTo(map)
     .bindPopup("Tu ubicación")
     .openPopup();
+
+  // ============================================================
+  // 4. LÓGICA DE GEOFENCING (DETECTAR LLEGADA)
+  // ============================================================
+
+  // Fórmula de Haversine para calcular metros entre dos coordenadas
+  function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Radio de la tierra en metros
+      const φ1 = lat1 * Math.PI/180;
+      const φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180;
+      const Δλ = (lon2-lon1) * Math.PI/180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c; // Distancia en metros
+  }
+
+  function verificarLlegadaDestino(latActual, lngActual) {
+      if (!DESTINO_ACTUAL || LLEGADA_DETECTADA) return;
+
+      const distancia = calcularDistanciaMetros(latActual, lngActual, DESTINO_ACTUAL.lat, DESTINO_ACTUAL.lng);
+      
+      // Debug en consola para ver qué tan cerca estás
+      // console.log(`Distancia al destino: ${Math.round(distancia)} metros`);
+
+      if (distancia < RADIO_DETECCION_METROS) {
+          console.log("✅ ¡Llegada detectada!");
+          LLEGADA_DETECTADA = true; // Bloquear para no disparar múltiples veces
+          avanzarSiguienteTurno();
+      }
+  }
+
+  function avanzarSiguienteTurno() {
+      // 1. Verificar si hay más viajes hoy
+      if (INDICE_VIAJE_ACTUAL >= MIS_VIAJES_HOY.length - 1) {
+          // SE ACABARON LOS VIAJES
+          finDelServicio();
+      } else {
+          // 2. Cargar el siguiente
+          INDICE_VIAJE_ACTUAL++;
+          const siguienteViaje = MIS_VIAJES_HOY[INDICE_VIAJE_ACTUAL];
+          
+          // Notificación Visual y Sonora
+          if("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
+          alert(`🏁 LLegada a destino detectada.\n\n🔄 Iniciando siguiente ruta: ${siguienteViaje.rutaNombre}\n⏰ Horario: ${siguienteViaje.hora}`);
+          
+          // Cargar la nueva ruta
+          cargarRutaActiva(siguienteViaje);
+      }
+  }
+
+  function finDelServicio() {
+      routeDisplay.textContent = "Jornada Finalizada";
+      statusDisplay.innerHTML = "● Fuera de Servicio";
+      statusDisplay.className = "status-indicator status-off";
+      statusDisplay.style.color = "var(--color-error)";
+      DESTINO_ACTUAL = null;
+      if (rutaPolyline) map.removeLayer(rutaPolyline);
+      
+      alert("🏁 Has llegado al destino final de hoy.\nTu estado ahora es: Fuera de Servicio.");
+  }
+
+
+  // ============================================================
+  // 5. CARGA DE DATOS Y RUTAS
+  // ============================================================
+// Variable global para guardar el control de ruta y poder borrarlo después
+  let routingControl = null; 
+
+  async function cargarRutaActiva(viaje) {
+      // 1. Actualizar Textos UI
+      routeDisplay.textContent = viaje.rutaNombre;
+      statusDisplay.innerHTML = `● En Ruta (${viaje.hora})`;
+      statusDisplay.className = "status-indicator status-on";
+      statusDisplay.style.color = "var(--color-exito)";
+
+      try {
+          // 2. Limpiar mapa anterior
+          if (rutaPolyline) map.removeLayer(rutaPolyline); // Limpiar línea simple vieja
+          if (routingControl) map.removeControl(routingControl); // Limpiar ruta inteligente vieja
+          
+          // 3. Obtener datos de la ruta
+          const response = await fetch(`${BACKEND_URL}/api/rutas/${viaje.rutaId}`, {
+            headers: { Authorization: `Bearer ${token}` } 
+          });
+          const ruta = await response.json();
+
+          if (ruta.paradas && ruta.paradas.length > 0) {
+              
+              // Convertir paradas a formato Waypoints de Leaflet
+              const waypoints = ruta.paradas.map(p => L.latLng(
+                  p.ubicacion.coordinates[1], 
+                  p.ubicacion.coordinates[0]
+              ));
+
+              // 4. Dibujar la Ruta Inteligente (Sigue calles)
+              routingControl = L.Routing.control({
+                  waypoints: waypoints,
+                  router: L.Routing.osrmv1({
+                      serviceUrl: 'https://router.project-osrm.org/route/v1', // Servidor público demo
+                      profile: 'driving'
+                  }),
+                  // Opciones visuales de la línea
+                  lineOptions: {
+                      styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] // Usa tu color primario aquí
+                  },
+                  // Opciones para ocultar cosas que no queremos (instrucciones paso a paso, marcadores extra, etc)
+                  createMarker: function() { return null; }, // No crear marcadores automáticos (usamos los nuestros)
+                  addWaypoints: false,      // No permitir al usuario agregar puntos
+                  draggableWaypoints: false, // No permitir arrastrar
+                  fitSelectedRoutes: true,   // Centrar mapa en la ruta
+                  show: false                // Ocultar la caja de texto con instrucciones
+              }).addTo(map);
+
+              // 5. ESTABLECER DESTINO PARA EL GEOFENCING
+              // El routing es asíncrono, pero el destino geográfico sigue siendo la última parada
+              const ultimoPunto = waypoints[waypoints.length - 1];
+              DESTINO_ACTUAL = { lat: ultimoPunto.lat, lng: ultimoPunto.lng };
+              
+              LLEGADA_DETECTADA = false; 
+              console.log("🚩 Nuevo destino (Geofence) fijado en:", DESTINO_ACTUAL);
+          }
+      } catch (error) {
+          console.error("Error cargando ruta:", error);
+      }
+  }
+
+  async function inicializarSistema() {
+      try {
+          // A. Obtener Camión
+          const resCamion = await fetch(BACKEND_URL + "/api/users/mi-camion", { headers: { Authorization: `Bearer ${token}` }});
+          const dataCamion = await resCamion.json();
+          
+          if (resCamion.ok && dataCamion.camionId) {
+               MI_CAMION_ID = dataCamion.camionId;
+               let texto = `Unidad ${dataCamion.numeroUnidad}`;
+               if(dataCamion.placa) texto += ` (${dataCamion.placa})`;
+               headerDisplay.textContent = texto;
+               busDisplay.textContent = texto;
+          } else {
+               routeDisplay.textContent = "--";
+               statusDisplay.textContent = "● Sin Camión Asignado";
+               return; // No iniciar nada si no tiene camión
+          }
+
+          // B. Obtener TODOS los horarios del día
+          const resHorarios = await fetch(BACKEND_URL + "/api/horarios", { headers: { Authorization: `Bearer ${token}` }});
+          const todosHorarios = await resHorarios.json();
+          
+          const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+          const hoyBackend = {
+            "lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles",
+            "jueves": "Jueves", "viernes": "Viernes", "sabado": "Sábado", "domingo": "Domingo"
+          }[dias[new Date().getDay()]];
+
+          // Filtrar mis viajes de hoy
+          MIS_VIAJES_HOY = todosHorarios.filter(h => {
+              const esHoy = h.diaSemana === hoyBackend;
+              const soyYo = h.infoConductor && h.infoConductor[0]?._id === (user._id || user.id);
+              const esMiCamion = String(h.camionUnidad) === String(dataCamion.numeroUnidad);
+              return esHoy && (soyYo || esMiCamion);
+          });
+
+          // Ordenar por hora
+          const horaAInt = (h) => parseInt(h.split(':')[0]) * 60 + parseInt(h.split(':')[1]);
+          MIS_VIAJES_HOY.sort((a, b) => horaAInt(a.hora) - horaAInt(b.hora));
+
+          if (MIS_VIAJES_HOY.length === 0) {
+              routeDisplay.textContent = "Día Libre";
+              statusDisplay.textContent = "● Sin Recorridos";
+              return;
+          }
+
+          // C. Determinar en qué viaje vamos (según la hora actual)
+          const now = new Date();
+          const horaActual = now.getHours() * 60 + now.getMinutes();
+          
+          // Buscamos el primer viaje que no haya terminado (hora + 45 mins aprox)
+          // Si todos pasaron, marcamos el último. Si ninguno empezó, marcamos el primero.
+          let indiceEncontrado = 0; 
+          
+          for (let i = 0; i < MIS_VIAJES_HOY.length; i++) {
+              const horaViaje = horaAInt(MIS_VIAJES_HOY[i].hora);
+              // Si la hora actual es menor que (horaViaje + 30 mins), asumimos que ese es el viaje actual/siguiente
+              if (horaActual < (horaViaje + 30)) {
+                  indiceEncontrado = i;
+                  break;
+              }
+              // Si ya es muy tarde, nos quedamos en el último (que seguramente activará fin de servicio)
+              if (i === MIS_VIAJES_HOY.length - 1) indiceEncontrado = i; 
+          }
+          
+          // Si ya es MUY tarde (2 horas despues del ultimo viaje), marcar fin
+          const ultimoViaje = MIS_VIAJES_HOY[MIS_VIAJES_HOY.length - 1];
+          if (horaActual > (horaAInt(ultimoViaje.hora) + 120)) {
+             finDelServicio();
+             iniciarGeolocalizacion(); // Iniciamos GPS solo para ubicación, sin lógica de ruta
+             return;
+          }
+
+          // D. Iniciar el viaje detectado
+          INDICE_VIAJE_ACTUAL = indiceEncontrado;
+          cargarRutaActiva(MIS_VIAJES_HOY[INDICE_VIAJE_ACTUAL]);
+          iniciarGeolocalizacion();
+
+      } catch (error) {
+          console.error("Error inicializando:", error);
+      }
+  }
+
+
+  // ============================================================
+  // 6. GPS Y SOCKETS
+  // ============================================================
+
+  function iniciarGeolocalizacion() {
+      if ("geolocation" in navigator) {
+          geoWatchId = navigator.geolocation.watchPosition(
+              (position) => {
+                  const lat = position.coords.latitude;
+                  const lng = position.coords.longitude;
+                  
+                  // 1. Mover marcador visual
+                  const newLatLng = new L.LatLng(lat, lng);
+                  driverMarker.setLatLng(newLatLng);
+                  map.panTo(newLatLng);
+                  
+                  // 2. Enviar a estudiantes (Socket)
+                  if (MI_CAMION_ID && socket.connected) {
+                      socket.emit("driverLocationUpdate", {
+                          camionId: MI_CAMION_ID,
+                          location: { lat, lng }
+                      });
+                  }
+
+                  // 3. 🔥 VERIFICAR SI LLEGÓ AL DESTINO (GEOFENCING)
+                  verificarLlegadaDestino(lat, lng);
+              },
+              (err) => console.warn("GPS Error:", err),
+              { enableHighAccuracy: true, maximumAge: 0 }
+          );
+      }
+  }
 
 
   // 4. LÓGICA DEL MENÚ LATERAL Y MODALES
@@ -343,37 +598,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 6. GEOLOCALIZACIÓN
-  function iniciarGeolocalizacion() {
-    if ("geolocation" in navigator) {
-      if (geoWatchId) return; // Ya está corriendo
+  // // 6. GEOLOCALIZACIÓN
+  // function iniciarGeolocalizacion() {
+  //   if ("geolocation" in navigator) {
+  //     if (geoWatchId) return; // Ya está corriendo
 
-      console.log("📍 Iniciando GPS Conductor...");
-      geoWatchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const newPos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
+  //     console.log("📍 Iniciando GPS Conductor...");
+  //     geoWatchId = navigator.geolocation.watchPosition(
+  //       (position) => {
+  //         const newPos = {
+  //           lat: position.coords.latitude,
+  //           lng: position.coords.longitude,
+  //         };
 
-          driverMarker.setLatLng(newPos);
-          map.panTo(newPos);
+  //         driverMarker.setLatLng(newPos);
+  //         map.panTo(newPos);
 
-          // Emitir al servidor solo si tengo camión asignado
-          if (MI_CAMION_ID && socket.connected) {
-            socket.emit("driverLocationUpdate", {
-              camionId: MI_CAMION_ID,
-              location: newPos,
-            });
-          }
-        },
-        (error) => console.warn("Error GPS:", error.message),
-        { enableHighAccuracy: true, maximumAge: 0 }
-      );
-    } else {
-       alert("Tu dispositivo no soporta GPS.");
-    }
-  }
+  //         // Emitir al servidor solo si tengo camión asignado
+  //         if (MI_CAMION_ID && socket.connected) {
+  //           socket.emit("driverLocationUpdate", {
+  //             camionId: MI_CAMION_ID,
+  //             location: newPos,
+  //           });
+  //         }
+  //       },
+  //       (error) => console.warn("Error GPS:", error.message),
+  //       { enableHighAccuracy: true, maximumAge: 0 }
+  //     );
+  //   } else {
+  //      alert("Tu dispositivo no soporta GPS.");
+  //   }
+  // }
 
   // 7. REPORTAR INCIDENTE (Modal Lógica)
   const incidentModal = document.getElementById("incident-modal");
@@ -454,6 +709,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Iniciar
+  // 7. ARRANCAR EL SISTEMA
+  inicializarSistema();
   actualizarEstadoConductor();
   setInterval(actualizarEstadoConductor, 60000);
 });

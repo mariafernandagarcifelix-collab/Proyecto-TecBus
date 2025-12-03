@@ -700,3 +700,8 @@ header {
 .fullscreen-content::-webkit-scrollbar { width: 10px; }
 .fullscreen-content::-webkit-scrollbar-track { background: #111; }
 .fullscreen-content::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+
+/* Ocultar panel de instrucciones de Leaflet Routing Machine */
+.leaflet-routing-container {
+    display: none !important;
+}

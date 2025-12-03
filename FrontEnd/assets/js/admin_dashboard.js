@@ -21,6 +21,28 @@ document.addEventListener("DOMContentLoaded", () => {
   let usuariosCargados = [];
   let busMarkers = {};
 
+  // --- LUGARES PREDEFINIDOS (COMO FAVORITOS) ---
+const LUGARES_CLAVE = [
+    {
+        nombre: "Instituto Tecnológico Superior de Guasave (TEC)",
+        lat: 25.523708, 
+        lon: -108.382035,
+        tipo: "escuela"
+    },
+    {
+        nombre: "Central Camionera Regional de Guasave",
+        lat: 25.570119, 
+        lon: -108.473013,
+        tipo: "estacion"
+    },
+    {
+        nombre: "La Brecha",
+        lat: 25.523708, 
+        lon: -108.382035,
+        tipo: "tienda"
+    }
+];
+
   // CAMBIO: Usamos SOCKET_URL en lugar de la dirección fija
   const socket = io(SOCKET_URL);
   socket.on("connect", () =>
@@ -1094,26 +1116,33 @@ document.addEventListener("DOMContentLoaded", () => {
     modalEditarHorario.classList.remove("modal-visible");
   };
 
-  // --- 8. EDITOR DE RUTAS (MAPA) ---
+  // --- 8. EDITOR DE RUTAS (MAPA Y BUSCADOR DE GUÍAS) ---
   const modalRutaMapa = document.getElementById("edit-ruta-mapa-modal");
   const modalFormRutaMapa = document.getElementById("form-edit-ruta-mapa");
   const closeModalBtnRutaMapa = modalRutaMapa.querySelector(".close-button");
   const listaParadasUI = document.getElementById("lista-paradas");
+  
+  // Inputs del buscador
+  const inputRefOrigin = document.getElementById("ref-origin");
+  const inputRefDest = document.getElementById("ref-destination");
+  const btnLocateRefs = document.getElementById("btn-locate-refs");
+  const btnClearRefs = document.getElementById("btn-clear-refs");
+
   let editorMap = null;
   let paradasTemporales = [];
-  let marcadoresParadas = [];
+  let marcadoresParadas = []; // Marcadores azules (Ruta oficial)
+  let marcadoresGuia = [];    // Marcadores verdes/rojos (Solo referencia visual)
+
   function inicializarEditorMapa() {
     if (editorMap) return;
-    editorMap = L.map("ruta-map-editor").setView(
-      [initialLat, initialLng],
-      initialZoom
-    );
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      {
-        attribution: "&copy; OpenStreetMap &copy; CARTO",
-      }
-    ).addTo(editorMap);
+    
+    editorMap = L.map("ruta-map-editor").setView([initialLat, initialLng], initialZoom);
+    
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+    }).addTo(editorMap);
+
+    // Evento: Clic en el mapa agrega parada a la ruta
     editorMap.on("click", (e) => {
       const { lat, lng } = e.latlng;
       const nuevaParada = {
@@ -1125,9 +1154,218 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarUIParadas();
     });
   }
+
+  // ============================================================
+  //  BUSCADOR INTELIGENTE TIPO GOOGLE MAPS (Nominatim API)
+  // ============================================================
+  
+  const listOrigin = document.getElementById("list-origin");
+  
+  const listDest = document.getElementById("list-destination");
+  
+
+
+  // Función para limpiar pines
+  function limpiarGuias() {
+      marcadoresGuia.forEach(m => editorMap.removeLayer(m));
+      marcadoresGuia = [];
+      if(inputRefOrigin) inputRefOrigin.value = "";
+      if(inputRefDest) inputRefDest.value = "";
+      cerrarListas();
+  }
+  
+  if (btnClearRefs) btnClearRefs.addEventListener("click", limpiarGuias);
+
+  // Función "Debounce" (para no buscar en cada letra, espera 300ms)
+  function debounce(func, timeout = 300){
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+  }
+
+  // Configurar Inputs
+  setupAutocomplete(inputRefOrigin, listOrigin, 'origen');
+  setupAutocomplete(inputRefDest, listDest, 'destino');
+
+  function setupAutocomplete(input, listElement, tipo) {
+      if(!input || !listElement) return;
+
+      input.addEventListener("input", debounce(async (e) => {
+          const query = e.target.value.trim().toLowerCase();
+          listElement.innerHTML = ""; // Limpiar lista
+
+          if (query.length < 2) { 
+              listElement.classList.remove("active");
+              return;
+          }
+
+          // 1. BUSCAR EN LUGARES PREDEFINIDOS (Tus Favoritos)
+          const resultadosLocales = LUGARES_CLAVE.filter(lugar => 
+              lugar.nombre.toLowerCase().includes(query)
+          );
+
+          // Renderizar locales primero (con icono de estrella)
+          resultadosLocales.forEach(lugar => {
+              const li = document.createElement("li");
+              li.style.backgroundColor = "#1a2e1a"; // Un fondo verdecito para resaltar
+              li.innerHTML = `
+                <i class="fas fa-star" style="color:gold;"></i>
+                <div style="display:flex; flex-direction:column;">
+                    <span style="font-weight:bold; color:#fff;">${lugar.nombre}</span>
+                    <span style="font-size:0.75rem; color:#aaa;">Ubicación Guardada</span>
+                </div>
+              `;
+              li.addEventListener("click", () => {
+                  input.value = lugar.nombre;
+                  listElement.classList.remove("active");
+                  colocarMarcadorGuia(lugar.lat, lugar.lon, tipo, lugar.nombre);
+              });
+              listElement.appendChild(li);
+          });
+
+          // 2. BUSCAR EN INTERNET (NOMINATIM API) - Opcional si no encuentras lo local
+          try {
+              // Búsqueda restringida a la zona
+              const viewbox = "-108.60,25.30,-107.90,25.80";
+              const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=mx&limit=3&viewbox=${viewbox}&bounded=1`;
+              
+              const res = await fetch(url);
+              const data = await res.json();
+
+              data.forEach(lugar => {
+                  const li = document.createElement("li");
+                  const parts = lugar.display_name.split(",");
+                  const mainName = parts[0];
+
+                  li.innerHTML = `
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div style="display:flex; flex-direction:column; line-height:1.2;">
+                        <span style="font-weight:bold;">${mainName}</span>
+                        <span style="font-size:0.75rem; color:#aaa;">Resultado de Internet</span>
+                    </div>
+                  `;
+                  
+                  li.addEventListener("click", () => {
+                      input.value = mainName;
+                      listElement.classList.remove("active");
+                      colocarMarcadorGuia(lugar.lat, lugar.lon, tipo, lugar.display_name);
+                  });
+
+                  listElement.appendChild(li);
+              });
+
+          } catch (error) {
+              console.log("Sin internet o error en API, mostrando solo locales.");
+          }
+
+          // Mostrar lista si hay algún resultado (local o de internet)
+          if (listElement.children.length > 0) {
+              listElement.classList.add("active");
+          } else {
+              listElement.classList.remove("active");
+          }
+
+      }, 300));
+
+      // Cerrar al hacer clic fuera
+      document.addEventListener("click", (e) => {
+          if (!input.contains(e.target) && !listElement.contains(e.target)) {
+              listElement.classList.remove("active");
+          }
+      });
+  }
+
+  function renderResultados(resultados, listElement, inputElement, tipo) {
+      listElement.innerHTML = "";
+      
+      if (resultados.length === 0) {
+          listElement.classList.remove("active");
+          return;
+      }
+
+      resultados.forEach(lugar => {
+          const li = document.createElement("li");
+          // Mostramos el nombre principal (display_name suele ser muy largo)
+          // Intentamos formatearlo un poco
+          const parts = lugar.display_name.split(",");
+          const mainName = parts[0];
+          const secondary = parts.slice(1, 3).join(",");
+
+          li.innerHTML = `
+            <i class="fas fa-map-pin"></i>
+            <div style="display:flex; flex-direction:column; line-height:1.2;">
+                <span style="font-weight:bold;">${mainName}</span>
+                <span style="font-size:0.75rem; color:#aaa;">${secondary}</span>
+            </div>
+          `;
+          
+          li.addEventListener("click", () => {
+              // 1. Poner texto en input
+              inputElement.value = mainName;
+              
+              // 2. Cerrar lista
+              listElement.classList.remove("active");
+
+              // 3. Crear Marcador Visual en el Mapa
+              colocarMarcadorGuia(lugar.lat, lugar.lon, tipo, lugar.display_name);
+          });
+
+          listElement.appendChild(li);
+      });
+
+      listElement.classList.add("active");
+  }
+
+  function cerrarListas() {
+      if(listOrigin) listOrigin.classList.remove("active");
+      if(listDest) listDest.classList.remove("active");
+  }
+
+  function colocarMarcadorGuia(lat, lng, tipo, titulo) {
+      if (!editorMap) return;
+
+      const color = tipo === 'origen' ? '#2ecc71' : '#e74c3c'; // Verde o Rojo
+      
+      // Icono Personalizado
+      const guideIcon = L.divIcon({
+          className: 'guide-marker',
+          html: `<div style="
+              background-color: ${color};
+              width: 32px; height: 32px;
+              border-radius: 50%;
+              border: 3px solid white;
+              box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+              display: flex; justify-content: center; align-items: center;
+              color: white; font-size: 16px;">
+              <i class="fas ${tipo === 'origen' ? 'fa-play' : 'fa-flag-checkered'}"></i>
+          </div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+      });
+
+      const marker = L.marker([lat, lng], { icon: guideIcon })
+          .addTo(editorMap)
+          .bindPopup(`<strong style="color:${color}">${tipo.toUpperCase()}</strong><br>${titulo}`)
+          .openPopup();
+
+      marcadoresGuia.push(marker);
+
+      // Centrar el mapa en el lugar seleccionado
+      editorMap.setView([lat, lng], 15);
+  }
+  // ----------------------------------------------------
+
   function openEditRutaMapaModal(ruta) {
     modalRutaMapa.classList.add("modal-visible");
     document.getElementById("edit-ruta-mapa-id").value = ruta._id;
+    
+    // Limpiar inputs de búsqueda
+    if(inputRefOrigin) inputRefOrigin.value = "";
+    if(inputRefDest) inputRefDest.value = "";
+    limpiarGuias();
+
     setTimeout(() => {
       inicializarEditorMapa();
       editorMap.invalidateSize();
@@ -1135,42 +1373,74 @@ document.addEventListener("DOMContentLoaded", () => {
       actualizarUIParadas();
     }, 100);
   }
+  
   function actualizarUIParadas() {
+    // Limpiar marcadores de RUTA (azules)
     marcadoresParadas.forEach((m) => editorMap.removeLayer(m));
     marcadoresParadas = [];
     listaParadasUI.innerHTML = "";
+
     if (paradasTemporales.length === 0) {
-      listaParadasUI.innerHTML = "<li>No hay paradas definidas.</li>";
+      listaParadasUI.innerHTML = "<li>No hay paradas definidas. Haz clic en el mapa.</li>";
       return;
     }
-    const latLngs = [];
+
+    // Icono normal de parada (Azul)
+    const stopIcon = L.divIcon({
+        className: "stop-icon",
+        html: `<div style="background-color: var(--color-primario); width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
+        iconSize: [12, 12]
+    });
+
+    // Dibujar línea de ruta
+    const latLngs = paradasTemporales.map(p => [p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]]);
+    
+    // Dibujamos marcadores
     paradasTemporales.forEach((parada, index) => {
       const [lng, lat] = parada.ubicacion.coordinates;
-      latLngs.push([lat, lng]);
-      const marker = L.marker([lat, lng])
+      
+      const marker = L.marker([lat, lng], { icon: stopIcon, draggable: true }) // Hacemos draggable para ajustar
         .addTo(editorMap)
-        .bindPopup(`Parada ${index + 1}`);
-      marker.on("click", () => {
-        paradasTemporales.splice(index, 1);
-        actualizarUIParadas();
+        .bindPopup(`Parada ${index + 1} <br> <button onclick="eliminarParada(${index})">Eliminar</button>`);
+      
+      // Evento al arrastrar para corregir posición
+      marker.on('dragend', function(event){
+        var marker = event.target;
+        var position = marker.getLatLng();
+        paradasTemporales[index].ubicacion.coordinates = [position.lng, position.lat];
+        // Opcional: Redibujar línea aquí si quieres feedback inmediato
       });
+
       marcadoresParadas.push(marker);
-      listaParadasUI.innerHTML += `<li>Parada ${
-        index + 1
-      } (Clic en el marcador para eliminar)</li>`;
+      
+      listaParadasUI.innerHTML += `
+        <li style="display:flex; justify-content:space-between; align-items:center;">
+            <span>${index + 1}. [${lat.toFixed(4)}, ${lng.toFixed(4)}]</span>
+            <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="eliminarParada(${index})"></i>
+        </li>`;
     });
+    
+    // Dibujar Polilínea (El trazo real)
+    if(window.rutaPolylineEditor) editorMap.removeLayer(window.rutaPolylineEditor);
+    window.rutaPolylineEditor = L.polyline(latLngs, { color: 'var(--color-primario)', weight: 4 }).addTo(editorMap);
   }
+
+  // Hacer accesible la función eliminar globalmente
+  window.eliminarParada = (index) => {
+      paradasTemporales.splice(index, 1);
+      actualizarUIParadas();
+  };
+
   function closeEditRutaMapaModal() {
     modalRutaMapa.classList.remove("modal-visible");
   }
-  if (closeModalBtnRutaMapa)
-    closeModalBtnRutaMapa.onclick = closeEditRutaMapaModal;
+  if (closeModalBtnRutaMapa) closeModalBtnRutaMapa.onclick = closeEditRutaMapaModal;
+  
   if (modalFormRutaMapa) {
     modalFormRutaMapa.addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = document.getElementById("edit-ruta-mapa-id").value;
       try {
-        // CAMBIO: BACKEND_URL
         const response = await fetch(`${BACKEND_URL}/api/rutas/${id}/paradas`, {
           method: "PUT",
           headers: {
@@ -1180,7 +1450,7 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ paradas: paradasTemporales }),
         });
         if (!response.ok) throw new Error("No se pudo guardar el trazado");
-        alert("¡Trazado de ruta guardado!");
+        alert("¡Trazado de ruta guardado exitosamente!");
         closeEditRutaMapaModal();
         cargarRutas();
       } catch (error) {

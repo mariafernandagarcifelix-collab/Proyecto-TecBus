@@ -13,6 +13,8 @@
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/admin.css" />
     <script>
@@ -557,42 +559,65 @@
         </div>
       </div>
 
-      <div id="edit-ruta-mapa-modal" class="modal">
-        <div class="modal-content map-modal-content">
-          <span class="close-button">&times;</span>
-          <h2>Editor de Trazado de Ruta</h2>
-          <p>
-            Haz clic en el mapa para agregar paradas en orden. Haz clic en una
-            parada para eliminarla.
-          </p>
-
-          <div id="ruta-map-editor"></div>
-
-          <form id="form-edit-ruta-mapa">
-            <input type="hidden" id="edit-ruta-mapa-id" />
-            <div class="form-group">
-              <label>Paradas (Nombre Opcional):</label>
-              <ul
-                id="lista-paradas"
-                style="
-                  max-height: 100px;
-                  overflow-y: auto;
-                  background: #111;
-                  padding: 10px;
-                  border-radius: 8px;
-                "
-              >
-                <li>No hay paradas definidas.</li>
-              </ul>
+      <div id="edit-ruta-mapa-modal" class="fullscreen-overlay">
+        
+        <div class="fullscreen-header">
+            <div class="header-left">
+                <h2><i class="fas fa-map-marked-alt"></i> Editor de Trazado</h2>
+                <p>Define el camino exacto que seguirá el camión.</p>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%">
-              Guardar Trazado de Ruta
+            <button class="btn-close-fs close-button">
+                <i class="fas fa-times"></i> Cerrar Editor
             </button>
-          </form>
+        </div>
+
+        <div class="fullscreen-content">
+            
+            <div class="reference-search-box">
+              <div class="input-group autocomplete-wrapper">
+                  <i class="fas fa-map-marker-alt" style="color: #2ecc71;"></i>
+                  <input type="text" id="ref-origin" placeholder="Buscar Origen (ej. Ley Guasave)..." autocomplete="off">
+                  <ul id="list-origin" class="suggestions-list"></ul> </div>
+
+              <div class="input-group autocomplete-wrapper">
+                  <i class="fas fa-flag-checkered" style="color: #e74c3c;"></i>
+                  <input type="text" id="ref-destination" placeholder="Buscar Destino (ej. Tecnológico)..." autocomplete="off">
+                  <ul id="list-destination" class="suggestions-list"></ul> </div>
+
+              <button type="button" id="btn-clear-refs" class="btn-clear" title="Limpiar mapa">
+                  <i class="fas fa-eraser"></i> Limpiar
+              </button>
+          </div>
+<!-- <button type="button" id="btn-locate-refs" class="btn-search">
+                    <i class="fas fa-search"></i> Ubicar
+                </button> -->
+            <div id="ruta-map-editor"></div>
+
+            <form id="form-edit-ruta-mapa" class="footer-controls">
+                <input type="hidden" id="edit-ruta-mapa-id" />
+                
+                <div class="footer-list">
+                    <label style="color:#aaa; font-size:0.8rem; display:block; margin-bottom:5px;">
+                        Secuencia de Puntos (Clic en mapa para agregar):
+                    </label>
+                    <ul id="lista-paradas" class="lista-scroll" style="margin:0; list-style:none; padding:0;">
+                        <li><small>No hay puntos trazados aún.</small></li>
+                    </ul>
+                </div>
+
+                <div class="footer-actions">
+                    <button type="submit" class="btn btn-primary" style="width: 100%; height: 100%;">
+                        <i class="fas fa-save"></i> GUARDAR RUTA
+                    </button>
+                </div>
+            </form>
+
         </div>
       </div>
     </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="assets/js/admin_dashboard.js"></script>
   </body>
