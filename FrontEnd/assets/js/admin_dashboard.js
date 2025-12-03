@@ -19,6 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let camionesCargados = [];
   let rutasCargadas = [];
   let usuariosCargados = [];
+  let horariosCargados = []; // NUEVA
+  let alertasCargadas = [];  // NUEVA
   let busMarkers = {};
 
   // --- LUGARES PREDEFINIDOS (COMO FAVORITOS) ---
@@ -245,32 +247,22 @@ const LUGARES_CLAVE = [
     });
   }
 
-  async function cargarUsuarios() {
+  // FUNCIÓN PURA PARA RENDERIZAR (Reutilizable por el buscador)
+  function renderTablaUsuarios(listaUsuarios) {
     const tablaBody = document.getElementById("tabla-usuarios-body");
     if (!tablaBody) return;
-    tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
-    try {
-      const response = await fetch(BACKEND_URL + "/api/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error("Error al cargar usuarios.");
-      usuariosCargados = await response.json();
-      tablaBody.innerHTML = "";
-      if (usuariosCargados.length === 0) {
-        tablaBody.innerHTML =
-          '<tr><td colspan="5">No hay usuarios registrados.</td></tr>';
-        return;
-      }
-      usuariosCargados.forEach((user) => {
-        const row = document.createElement("tr");
+    tablaBody.innerHTML = "";
 
-        // Determinamos la clase CSS según el tipo de usuario exacto
+    if (listaUsuarios.length === 0) {
+        tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron usuarios.</td></tr>';
+        return;
+    }
+
+    listaUsuarios.forEach((user) => {
+        const row = document.createElement("tr");
         let badgeClass = "estudiante";
-        if (user.tipo === "administrador") {
-          badgeClass = "admin";
-        } else if (user.tipo === "conductor") {
-          badgeClass = "conductor";
-        }
+        if (user.tipo === "administrador") badgeClass = "admin";
+        else if (user.tipo === "conductor") badgeClass = "conductor";
 
         row.innerHTML = `
             <td>${user.nombre}</td>
@@ -278,24 +270,104 @@ const LUGARES_CLAVE = [
             <td><span class="badge badge-${badgeClass}">${user.tipo}</span></td>
             <td>${user.estado || "activo"}</td>
             <td>
-                <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${
-                  user._id
-                }" title="Editar">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${
-                  user._id
-                }" title="Eliminar">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${user._id}" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${user._id}" title="Eliminar"><i class="fas fa-trash"></i></button>
             </td>
         `;
         tablaBody.appendChild(row);
+    });
+  }
+
+  async function cargarUsuarios() {
+    const tablaBody = document.getElementById("tabla-usuarios-body");
+    if(tablaBody) tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+    try {
+      const response = await fetch(BACKEND_URL + "/api/users", {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (!response.ok) throw new Error("Error al cargar usuarios.");
+      usuariosCargados = await response.json(); // Guardamos en global
+      renderTablaUsuarios(usuariosCargados);    // Renderizamos todo
     } catch (error) {
-      tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
+      if(tablaBody) tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
     }
   }
+  
+  // --- LÓGICA DE BÚSQUEDA DE USUARIOS ---
+  const formSearchUsuario = document.getElementById("form-search-usuario");
+  if (formSearchUsuario) {
+      formSearchUsuario.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const nombre = document.getElementById("search-user-nombre").value.toLowerCase();
+          const email = document.getElementById("search-user-email").value.toLowerCase();
+          const tipo = document.getElementById("search-user-tipo").value;
+          const estado = document.getElementById("search-user-estado").value;
+
+          // Filtrado en cliente
+          const filtrados = usuariosCargados.filter(user => {
+              const matchNombre = !nombre || user.nombre.toLowerCase().includes(nombre);
+              const matchEmail = !email || user.email.toLowerCase().includes(email);
+              const matchTipo = !tipo || user.tipo === tipo;
+              const matchEstado = !estado || (user.estado || 'activo') === estado;
+              return matchNombre && matchEmail && matchTipo && matchEstado;
+          });
+
+          renderTablaUsuarios(filtrados);
+          document.getElementById("search-usuario-modal").classList.remove("modal-visible");
+      });
+  }
+
+  // async function cargarUsuarios() {
+  //   const tablaBody = document.getElementById("tabla-usuarios-body");
+  //   if (!tablaBody) return;
+  //   tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+  //   try {
+  //     const response = await fetch(BACKEND_URL + "/api/users", {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     if (!response.ok) throw new Error("Error al cargar usuarios.");
+  //     usuariosCargados = await response.json();
+  //     tablaBody.innerHTML = "";
+  //     if (usuariosCargados.length === 0) {
+  //       tablaBody.innerHTML =
+  //         '<tr><td colspan="5">No hay usuarios registrados.</td></tr>';
+  //       return;
+  //     }
+  //     usuariosCargados.forEach((user) => {
+  //       const row = document.createElement("tr");
+
+  //       // Determinamos la clase CSS según el tipo de usuario exacto
+  //       let badgeClass = "estudiante";
+  //       if (user.tipo === "administrador") {
+  //         badgeClass = "admin";
+  //       } else if (user.tipo === "conductor") {
+  //         badgeClass = "conductor";
+  //       }
+
+  //       row.innerHTML = `
+  //           <td>${user.nombre}</td>
+  //           <td>${user.email}</td>
+  //           <td><span class="badge badge-${badgeClass}">${user.tipo}</span></td>
+  //           <td>${user.estado || "activo"}</td>
+  //           <td>
+  //               <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${
+  //                 user._id
+  //               }" title="Editar">
+  //                   <i class="fas fa-edit"></i>
+  //               </button>
+  //               <button class="btn btn-danger btn-sm btn-delete-user" data-id="${
+  //                 user._id
+  //               }" title="Eliminar">
+  //                   <i class="fas fa-trash"></i>
+  //               </button>
+  //           </td>
+  //       `;
+  //       tablaBody.appendChild(row);
+  //     });
+  //   } catch (error) {
+  //     tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
+  //   }
+  // }
 
   // Registrar Usuario (Actualizado con licencia combo y sin camión)
   if (formRegistrarUsuario) {
@@ -457,42 +529,94 @@ const LUGARES_CLAVE = [
   const modalCamion = document.getElementById("edit-camion-modal");
   const modalFormCamion = document.getElementById("form-edit-camion");
   const closeModalBtnCamion = modalCamion.querySelector(".close-button");
+
+  function renderTablaCamiones(listaCamiones) {
+      const tablaBody = document.getElementById("tabla-camiones-body");
+      if (!tablaBody) return;
+      tablaBody.innerHTML = "";
+      if (listaCamiones.length === 0) {
+          tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron camiones.</td></tr>';
+          return;
+      }
+      listaCamiones.forEach((camion) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${camion.placa}</td><td>${camion.numeroUnidad}</td><td>${camion.modelo || "N/A"}</td><td><span class="badge badge-admin">${camion.estado}</span></td>
+              <td><button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${camion._id}"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-camion" data-id="${camion._id}"><i class="fas fa-trash"></i></button></td>`;
+          tablaBody.appendChild(row);
+      });
+  }
+
   async function cargarCamiones() {
     const tablaBody = document.getElementById("tabla-camiones-body");
-    if (!tablaBody) return;
-    tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+    if(tablaBody) tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
-      // CAMBIO: BACKEND_URL
       const response = await fetch(BACKEND_URL + "/api/camiones", {
-        method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("Error al cargar camiones.");
+      if (!response.ok) throw new Error("Error");
       camionesCargados = await response.json();
-      tablaBody.innerHTML = "";
-      if (camionesCargados.length === 0) {
-        tablaBody.innerHTML =
-          '<tr><td colspan="5">No hay camiones registrados.</td></tr>';
-        return;
-      }
-      camionesCargados.forEach((camion) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `<td>${camion.placa}</td><td>${
-          camion.numeroUnidad
-        }</td><td>${
-          camion.modelo || "N/A"
-        }</td><td><span class="badge badge-admin">${camion.estado}</span></td>
-                    <td><button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${
-                      camion._id
-                    }"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-camion" data-id="${
-          camion._id
-        }"><i class="fas fa-trash"></i></button></td>`;
-        tablaBody.appendChild(row);
-      });
+      renderTablaCamiones(camionesCargados);
     } catch (error) {
-      tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
+       if(tablaBody) tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
     }
   }
+
+  const formSearchCamion = document.getElementById("form-search-camion");
+  if (formSearchCamion) {
+      formSearchCamion.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const unidad = document.getElementById("search-camion-unidad").value.toLowerCase();
+          const placa = document.getElementById("search-camion-placa").value.toLowerCase();
+          const estado = document.getElementById("search-camion-estado").value;
+
+          const filtrados = camionesCargados.filter(c => {
+              const matchUnidad = !unidad || c.numeroUnidad.toLowerCase().includes(unidad);
+              const matchPlaca = !placa || c.placa.toLowerCase().includes(placa);
+              const matchEstado = !estado || c.estado === estado;
+              return matchUnidad && matchPlaca && matchEstado;
+          });
+          renderTablaCamiones(filtrados);
+          document.getElementById("search-camion-modal").classList.remove("modal-visible");
+      });
+  }
+
+  // async function cargarCamiones() {
+  //   const tablaBody = document.getElementById("tabla-camiones-body");
+  //   if (!tablaBody) return;
+  //   tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+  //   try {
+  //     // CAMBIO: BACKEND_URL
+  //     const response = await fetch(BACKEND_URL + "/api/camiones", {
+  //       method: "GET",
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     if (!response.ok) throw new Error("Error al cargar camiones.");
+  //     camionesCargados = await response.json();
+  //     tablaBody.innerHTML = "";
+  //     if (camionesCargados.length === 0) {
+  //       tablaBody.innerHTML =
+  //         '<tr><td colspan="5">No hay camiones registrados.</td></tr>';
+  //       return;
+  //     }
+  //     camionesCargados.forEach((camion) => {
+  //       const row = document.createElement("tr");
+  //       row.innerHTML = `<td>${camion.placa}</td><td>${
+  //         camion.numeroUnidad
+  //       }</td><td>${
+  //         camion.modelo || "N/A"
+  //       }</td><td><span class="badge badge-admin">${camion.estado}</span></td>
+  //                   <td><button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${
+  //                     camion._id
+  //                   }"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-camion" data-id="${
+  //         camion._id
+  //       }"><i class="fas fa-trash"></i></button></td>`;
+  //       tablaBody.appendChild(row);
+  //     });
+  //   } catch (error) {
+  //     tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
+  //   }
+  // }
+
   const formRegistrarCamion = document.getElementById("form-registrar-camion");
   if (formRegistrarCamion) {
     formRegistrarCamion.addEventListener("submit", async (e) => {
@@ -609,45 +733,97 @@ const LUGARES_CLAVE = [
   const modalRuta = document.getElementById("edit-ruta-modal");
   const modalFormRuta = document.getElementById("form-edit-ruta");
   const closeModalBtnRuta = modalRuta.querySelector(".close-button");
-  async function cargarRutas() {
-    const tablaBody = document.getElementById("tabla-rutas-body");
-    if (!tablaBody) return;
-    tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
-    try {
-      // CAMBIO: BACKEND_URL
-      const response = await fetch(BACKEND_URL + "/api/rutas", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error("Error al cargar rutas.");
-      rutasCargadas = await response.json();
+
+  function renderTablaRutas(listaRutas) {
+      const tablaBody = document.getElementById("tabla-rutas-body");
+      if (!tablaBody) return;
       tablaBody.innerHTML = "";
-      if (rutasCargadas.length === 0) {
-        tablaBody.innerHTML =
-          '<tr><td colspan="5">No hay rutas registradas.</td></tr>';
-        return;
+      if (listaRutas.length === 0) {
+          tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron rutas.</td></tr>';
+          return;
       }
-      rutasCargadas.forEach((ruta) => {
+      listaRutas.forEach((ruta) => {
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${ruta.nombre}</td><td>${
-          ruta.descripcion || "N/A"
-        }</td><td><span class="badge ${
-          ruta.activa ? "badge-admin" : "badge-conductor"
-        }">${ruta.activa ? "Activa" : "Inactiva"}</span></td>
-                    <td><button class="btn btn-secondary btn-sm btn-edit-ruta" data-id="${
-                      ruta._id
-                    }"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-ruta" data-id="${
-          ruta._id
-        }"><i class="fas fa-trash"></i></button></td>
-                    <td><button class="btn btn-primary btn-sm btn-edit-mapa-ruta" data-id="${
-                      ruta._id
-                    }"><i class="fas fa-map-marked-alt"></i> Editar Trazado</button></td>`;
+        row.innerHTML = `<td>${ruta.nombre}</td><td>${ruta.descripcion || "N/A"}</td><td><span class="badge ${ruta.activa ? "badge-admin" : "badge-conductor"}">${ruta.activa ? "Activa" : "Inactiva"}</span></td>
+                    <td><button class="btn btn-secondary btn-sm btn-edit-ruta" data-id="${ruta._id}"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-ruta" data-id="${ruta._id}"><i class="fas fa-trash"></i></button></td>
+                    <td><button class="btn btn-primary btn-sm btn-edit-mapa-ruta" data-id="${ruta._id}"><i class="fas fa-map-marked-alt"></i> Editar Trazado</button></td>`;
         tablaBody.appendChild(row);
       });
-    } catch (error) {
-      tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
-    }
   }
+
+  async function cargarRutas() {
+      const tablaBody = document.getElementById("tabla-rutas-body");
+      if (!tablaBody) return;
+      tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+      try {
+          const response = await fetch(BACKEND_URL + "/api/rutas", { headers: { Authorization: `Bearer ${token}` }});
+          rutasCargadas = await response.json();
+          renderTablaRutas(rutasCargadas);
+      } catch (e) {}
+  }
+
+  const formSearchRuta = document.getElementById("form-search-ruta");
+  if(formSearchRuta) {
+      formSearchRuta.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const nombre = document.getElementById("search-ruta-nombre").value.toLowerCase();
+          const activaVal = document.getElementById("search-ruta-activa").value;
+          
+          const filtrados = rutasCargadas.filter(r => {
+              const matchName = !nombre || r.nombre.toLowerCase().includes(nombre);
+              // Conversión de string 'true'/'false' a booleano para comparación
+              let matchActive = true;
+              if (activaVal !== "") {
+                  const boolVal = activaVal === "true";
+                  matchActive = r.activa === boolVal;
+              }
+              return matchName && matchActive;
+          });
+          renderTablaRutas(filtrados);
+          document.getElementById("search-ruta-modal").classList.remove("modal-visible");
+      });
+  }
+
+  // async function cargarRutas() {
+  //   const tablaBody = document.getElementById("tabla-rutas-body");
+  //   if (!tablaBody) return;
+  //   tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+  //   try {
+  //     // CAMBIO: BACKEND_URL
+  //     const response = await fetch(BACKEND_URL + "/api/rutas", {
+  //       method: "GET",
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     if (!response.ok) throw new Error("Error al cargar rutas.");
+  //     rutasCargadas = await response.json();
+  //     tablaBody.innerHTML = "";
+  //     if (rutasCargadas.length === 0) {
+  //       tablaBody.innerHTML =
+  //         '<tr><td colspan="5">No hay rutas registradas.</td></tr>';
+  //       return;
+  //     }
+  //     rutasCargadas.forEach((ruta) => {
+  //       const row = document.createElement("tr");
+  //       row.innerHTML = `<td>${ruta.nombre}</td><td>${
+  //         ruta.descripcion || "N/A"
+  //       }</td><td><span class="badge ${
+  //         ruta.activa ? "badge-admin" : "badge-conductor"
+  //       }">${ruta.activa ? "Activa" : "Inactiva"}</span></td>
+  //                   <td><button class="btn btn-secondary btn-sm btn-edit-ruta" data-id="${
+  //                     ruta._id
+  //                   }"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-ruta" data-id="${
+  //         ruta._id
+  //       }"><i class="fas fa-trash"></i></button></td>
+  //                   <td><button class="btn btn-primary btn-sm btn-edit-mapa-ruta" data-id="${
+  //                     ruta._id
+  //                   }"><i class="fas fa-map-marked-alt"></i> Editar Trazado</button></td>`;
+  //       tablaBody.appendChild(row);
+  //     });
+  //   } catch (error) {
+  //     tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
+  //   }
+  // }
+
   const formRegistrarRuta = document.getElementById("form-registrar-ruta");
   if (formRegistrarRuta) {
     formRegistrarRuta.addEventListener("submit", async (e) => {
@@ -820,56 +996,109 @@ const LUGARES_CLAVE = [
     });
   }
 
-  async function cargarHorarios() {
-    const tablaBody = document.getElementById("tabla-horarios-body");
-    if (!tablaBody) return;
-
-    tablaBody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
-
-    try {
-      // CAMBIO: BACKEND_URL
-      const response = await fetch(BACKEND_URL + "/api/horarios", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const horarios = await response.json();
-
+  //HORARIOS
+  function renderTablaHorarios(listaHorarios) {
+      const tablaBody = document.getElementById("tabla-horarios-body");
+      if(!tablaBody) return;
       tablaBody.innerHTML = "";
-      if (horarios.length === 0) {
-        tablaBody.innerHTML =
-          '<tr><td colspan="6">No hay horarios registrados.</td></tr>';
+      if (listaHorarios.length === 0) {
+        tablaBody.innerHTML = '<tr><td colspan="6">No se encontraron horarios.</td></tr>';
         return;
       }
-
-      horarios.forEach((h) => {
+      listaHorarios.forEach((h) => {
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>${h.diaSemana}</td>
             <td><strong>${h.hora}</strong></td>
             <td>${h.rutaNombre || "N/A"}</td>
             <td>${h.camionUnidad || '<span class="text-muted">--</span>'}</td>
-            <td>${
-              h.conductorNombre || '<span class="text-muted">--</span>'
-            }</td>
+            <td>${h.conductorNombre || '<span class="text-muted">--</span>'}</td>
             <td>
-                <button class="btn btn-secondary btn-sm btn-edit-horario" 
-                    data-id="${h._id}" 
-                    data-salida-id="${h.salidaId}" title="Editar">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-danger btn-sm btn-delete-horario" 
-                    data-id="${h._id}" 
-                    data-salida-id="${h.salidaId}" title="Eliminar">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <button class="btn btn-secondary btn-sm btn-edit-horario" data-id="${h._id}" data-salida-id="${h.salidaId}"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm btn-delete-horario" data-id="${h._id}" data-salida-id="${h.salidaId}"><i class="fas fa-trash"></i></button>
             </td>
         `;
         tablaBody.appendChild(row);
       });
-    } catch (error) {
-      console.error(error);
-      tablaBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error al cargar</td></tr>`;
-    }
   }
+
+  async function cargarHorarios() {
+      try {
+          const response = await fetch(BACKEND_URL + "/api/horarios", { headers: { Authorization: `Bearer ${token}` }});
+          horariosCargados = await response.json(); // Global
+          renderTablaHorarios(horariosCargados);
+      } catch (e) {}
+  }
+
+  const formSearchHorario = document.getElementById("form-search-horario");
+  if(formSearchHorario){
+      formSearchHorario.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const ruta = document.getElementById("search-horario-ruta").value.toLowerCase();
+          const dia = document.getElementById("search-horario-dia").value;
+          const conductor = document.getElementById("search-horario-conductor").value.toLowerCase();
+
+          const filtrados = horariosCargados.filter(h => {
+              const matchRuta = !ruta || (h.rutaNombre && h.rutaNombre.toLowerCase().includes(ruta));
+              const matchDia = !dia || h.diaSemana === dia;
+              const matchCond = !conductor || (h.conductorNombre && h.conductorNombre.toLowerCase().includes(conductor));
+              return matchRuta && matchDia && matchCond;
+          });
+          renderTablaHorarios(filtrados);
+          document.getElementById("search-horario-modal").classList.remove("modal-visible");
+      });
+  }
+
+  // async function cargarHorarios() {
+  //   const tablaBody = document.getElementById("tabla-horarios-body");
+  //   if (!tablaBody) return;
+
+  //   tablaBody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+
+  //   try {
+  //     // CAMBIO: BACKEND_URL
+  //     const response = await fetch(BACKEND_URL + "/api/horarios", {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     const horarios = await response.json();
+
+  //     tablaBody.innerHTML = "";
+  //     if (horarios.length === 0) {
+  //       tablaBody.innerHTML =
+  //         '<tr><td colspan="6">No hay horarios registrados.</td></tr>';
+  //       return;
+  //     }
+
+  //     horarios.forEach((h) => {
+  //       const row = document.createElement("tr");
+  //       row.innerHTML = `
+  //           <td>${h.diaSemana}</td>
+  //           <td><strong>${h.hora}</strong></td>
+  //           <td>${h.rutaNombre || "N/A"}</td>
+  //           <td>${h.camionUnidad || '<span class="text-muted">--</span>'}</td>
+  //           <td>${
+  //             h.conductorNombre || '<span class="text-muted">--</span>'
+  //           }</td>
+  //           <td>
+  //               <button class="btn btn-secondary btn-sm btn-edit-horario" 
+  //                   data-id="${h._id}" 
+  //                   data-salida-id="${h.salidaId}" title="Editar">
+  //                   <i class="fas fa-edit"></i>
+  //               </button>
+  //               <button class="btn btn-danger btn-sm btn-delete-horario" 
+  //                   data-id="${h._id}" 
+  //                   data-salida-id="${h.salidaId}" title="Eliminar">
+  //                   <i class="fas fa-trash"></i>
+  //               </button>
+  //           </td>
+  //       `;
+  //       tablaBody.appendChild(row);
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     tablaBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error al cargar</td></tr>`;
+  //   }
+  // }
 
   document
     .getElementById("tabla-horarios-body")
@@ -1515,54 +1744,119 @@ const LUGARES_CLAVE = [
   }
 
   // --- 9. ¡NUEVO! CRUD - HISTORIAL DE ALERTAS ---
-  async function cargarAlertas() {
-    const tablaBody = document.getElementById("tabla-alertas-body");
-    if (!tablaBody) return;
-    tablaBody.innerHTML = '<tr><td colspan="4">Cargando historial...</td></tr>';
-
-    try {
-      // CAMBIO: BACKEND_URL
-      const response = await fetch(BACKEND_URL + "/api/notificaciones", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || "Error al cargar alertas.");
-      }
-
-      const alertas = await response.json();
-
+  function renderTablaAlertas(listaAlertas) {
+      const tablaBody = document.getElementById("tabla-alertas-body");
+      if(!tablaBody) return;
       tablaBody.innerHTML = "";
-      if (alertas.length === 0) {
-        tablaBody.innerHTML =
-          '<tr><td colspan="4">No hay alertas registradas.</td></tr>';
+      if (listaAlertas.length === 0) {
+        tablaBody.innerHTML = '<tr><td colspan="4">No hay alertas.</td></tr>';
         return;
       }
-
-      alertas.forEach((alerta) => {
+      listaAlertas.forEach((alerta) => {
         const row = document.createElement("tr");
-        const fecha = new Date(alerta.createdAt).toLocaleString("es-MX", {
-          dateStyle: "short",
-          timeStyle: "short",
-        });
-
-        row.innerHTML = `
-                    <td class="alert-row-danger">${
-                      alerta.camionUnidad || "N/A"
-                    }</td>
-                    <td>${alerta.titulo}</td>
-                    <td>${alerta.mensaje}</td>
-                    <td>${fecha}</td>
-                `;
+        const fecha = new Date(alerta.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+        row.innerHTML = `<td class="alert-row-danger">${alerta.camionUnidad || "N/A"}</td><td>${alerta.titulo}</td><td>${alerta.mensaje}</td><td>${fecha}</td>`;
         tablaBody.appendChild(row);
       });
-    } catch (error) {
-      console.error(error);
-      tablaBody.innerHTML = `<tr><td colspan="4" class="text-danger">${error.message}</td></tr>`;
-    }
   }
+
+  async function cargarAlertas() {
+      try {
+          const response = await fetch(BACKEND_URL + "/api/notificaciones", { headers: { Authorization: `Bearer ${token}` }});
+          alertasCargadas = await response.json();
+          renderTablaAlertas(alertasCargadas);
+      } catch (e) {}
+  }
+
+  const formSearchAlerta = document.getElementById("form-search-alerta");
+  if(formSearchAlerta) {
+      formSearchAlerta.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const unidad = document.getElementById("search-alerta-unidad").value.toLowerCase();
+          const tipo = document.getElementById("search-alerta-tipo").value.toLowerCase();
+
+          const filtrados = alertasCargadas.filter(a => {
+              const matchUnidad = !unidad || (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
+              const matchTipo = !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
+              return matchUnidad && matchTipo;
+          });
+          renderTablaAlertas(filtrados);
+          document.getElementById("search-alerta-modal").classList.remove("modal-visible");
+      });
+  }
+
+  // async function cargarAlertas() {
+  //   const tablaBody = document.getElementById("tabla-alertas-body");
+  //   if (!tablaBody) return;
+  //   tablaBody.innerHTML = '<tr><td colspan="4">Cargando historial...</td></tr>';
+
+  //   try {
+  //     // CAMBIO: BACKEND_URL
+  //     const response = await fetch(BACKEND_URL + "/api/notificaciones", {
+  //       method: "GET",
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+
+  //     if (!response.ok) {
+  //       const err = await response.json();
+  //       throw new Error(err.message || "Error al cargar alertas.");
+  //     }
+
+  //     const alertas = await response.json();
+
+  //     tablaBody.innerHTML = "";
+  //     if (alertas.length === 0) {
+  //       tablaBody.innerHTML =
+  //         '<tr><td colspan="4">No hay alertas registradas.</td></tr>';
+  //       return;
+  //     }
+
+  //     alertas.forEach((alerta) => {
+  //       const row = document.createElement("tr");
+  //       const fecha = new Date(alerta.createdAt).toLocaleString("es-MX", {
+  //         dateStyle: "short",
+  //         timeStyle: "short",
+  //       });
+
+  //       row.innerHTML = `
+  //                   <td class="alert-row-danger">${
+  //                     alerta.camionUnidad || "N/A"
+  //                   }</td>
+  //                   <td>${alerta.titulo}</td>
+  //                   <td>${alerta.mensaje}</td>
+  //                   <td>${fecha}</td>
+  //               `;
+  //       tablaBody.appendChild(row);
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     tablaBody.innerHTML = `<tr><td colspan="4" class="text-danger">${error.message}</td></tr>`;
+  //   }
+  // }
+
+  // --- FUNCIÓN GENÉRICA PARA ABRIR/CERRAR MODALES DE BÚSQUEDA ---
+  window.abrirModalBusqueda = function(tipo) {
+      const modal = document.getElementById(`search-${tipo}-modal`);
+      if(modal) modal.classList.add("modal-visible");
+  };
+
+  // Botones "Limpiar" dentro de los modales
+  document.querySelectorAll(".btn-reset-search").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+          // 1. Resetear formulario
+          const form = e.target.closest("form");
+          form.reset();
+          // 2. Cerrar modal
+          const modal = e.target.closest(".modal");
+          modal.classList.remove("modal-visible");
+          // 3. Restaurar tabla completa (según el ID del form)
+          if(form.id === "form-search-usuario") renderTablaUsuarios(usuariosCargados);
+          if(form.id === "form-search-camion") renderTablaCamiones(camionesCargados);
+          if(form.id === "form-search-ruta") renderTablaRutas(rutasCargadas);
+          if(form.id === "form-search-horario") renderTablaHorarios(horariosCargados);
+          if(form.id === "form-search-alerta") renderTablaAlertas(alertasCargadas);
+      });
+  });
 
   // --- Cierre de Modales (General) ---
   window.onclick = function (event) {
@@ -1571,5 +1865,16 @@ const LUGARES_CLAVE = [
     if (event.target == modalUser) closeEditUserModal();
     if (event.target == modalRutaMapa) closeEditRutaMapaModal();
     if (event.target == modalEditarHorario) cerrarModalEditarHorario();
+    if (event.target.classList.contains("modal")) {
+          event.target.classList.remove("modal-visible");
+      }
   };
+
+  // Cerrar con la X
+  document.querySelectorAll(".close-button").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+          e.target.closest(".modal")?.classList.remove("modal-visible");
+          e.target.closest(".fullscreen-overlay")?.classList.remove("modal-visible");
+      });
+  });
 });

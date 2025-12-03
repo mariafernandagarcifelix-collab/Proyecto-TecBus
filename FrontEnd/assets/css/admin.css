@@ -951,6 +951,42 @@
     margin-bottom: 30px;
 }
 
+/* ... (Estilos existentes) ... */
+
+/* --- NUEVO: Encabezado de Tablas con Botón de Búsqueda --- */
+.table-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.table-header-flex h3 {
+    margin: 0;
+    /* Hereda el tamaño de fuente original */
+}
+
+.btn-search-trigger {
+    background-color: var(--color-secundario);
+    color: white;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-search-trigger:hover {
+    background-color: var(--color-primario);
+    border-color: var(--color-primario);
+    transform: translateY(-2px);
+}
+
 /* Scrollbar bonito para la lista */
 .suggestions-list::-webkit-scrollbar { width: 6px; }
 .suggestions-list::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }

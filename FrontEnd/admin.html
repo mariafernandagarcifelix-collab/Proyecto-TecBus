@@ -169,7 +169,12 @@
           </div>
 
           <div class="table-container">
-            <h3>Usuarios Registrados</h3>
+            <div class="table-header-flex">
+                <h3>Usuarios Registrados</h3>
+                <button class="btn-search-trigger" onclick="abrirModalBusqueda('usuario')">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -232,7 +237,12 @@
           </div>
 
           <div class="table-container">
-            <h3>Camiones Registrados</h3>
+            <div class="table-header-flex">
+                <h3>Camiones Registrados</h3>
+                <button class="btn-search-trigger" onclick="abrirModalBusqueda('camion')">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -278,7 +288,12 @@
           </div>
 
           <div class="table-container">
-            <h3>Rutas Registradas</h3>
+            <div class="table-header-flex">
+                <h3>Rutas Registradas</h3>
+                <button class="btn-search-trigger" onclick="abrirModalBusqueda('ruta')">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -347,7 +362,12 @@
           </div>
 
           <div class="table-container">
-            <h3>Horarios Registrados</h3>
+            <div class="table-header-flex">
+                <h3>Horarios Registrados</h3>
+                <button class="btn-search-trigger" onclick="abrirModalBusqueda('horario')">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -366,7 +386,12 @@
 
         <section id="alertas" class="dashboard-section">
           <div class="table-container">
-            <h3>Historial de Alertas</h3>
+            <div class="table-header-flex">
+                <h3>Historial de Alertas</h3>
+                <button class="btn-search-trigger" onclick="abrirModalBusqueda('alerta')">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -654,6 +679,157 @@
         </div>
       </div>
     </div>
+
+    <div id="search-usuario-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2><i class="fas fa-search"></i> Buscar Usuario</h2>
+            <p>Rellena uno o más campos para filtrar.</p>
+            <form id="form-search-usuario">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="search-user-nombre" placeholder="Ej. Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label>Correo</label>
+                    <input type="text" id="search-user-email" placeholder="Ej. juan@tecnm.mx">
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="search-user-tipo">
+                            <option value="">-- Todos --</option>
+                            <option value="estudiante">Estudiante</option>
+                            <option value="conductor">Conductor</option>
+                            <option value="administrador">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select id="search-user-estado">
+                            <option value="">-- Todos --</option>
+                            <option value="activo">Activo</option>
+                            <option value="inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+                </div>
+            </form>
+        </div>
+      </div>
+
+      <div id="search-camion-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2><i class="fas fa-search"></i> Buscar Camión</h2>
+            <form id="form-search-camion">
+                <div class="form-group">
+                    <label>Número de Unidad</label>
+                    <input type="text" id="search-camion-unidad" placeholder="Ej. TEC-01">
+                </div>
+                <div class="form-group">
+                    <label>Placa</label>
+                    <input type="text" id="search-camion-placa" placeholder="Ej. ABC-123">
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="search-camion-estado">
+                        <option value="">-- Todos --</option>
+                        <option value="activo">Activo</option>
+                        <option value="mantenimiento">Mantenimiento</option>
+                        <option value="inactivo">Inactivo</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+                </div>
+            </form>
+        </div>
+      </div>
+
+      <div id="search-ruta-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2><i class="fas fa-search"></i> Buscar Ruta</h2>
+            <form id="form-search-ruta">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="search-ruta-nombre" placeholder="Ej. Centro">
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="search-ruta-activa">
+                        <option value="">-- Todos --</option>
+                        <option value="true">Activa</option>
+                        <option value="false">Inactiva</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+                </div>
+            </form>
+        </div>
+      </div>
+
+      <div id="search-horario-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2><i class="fas fa-search"></i> Buscar Horario</h2>
+            <form id="form-search-horario">
+                <div class="form-group">
+                    <label>Ruta</label>
+                    <input type="text" id="search-horario-ruta" placeholder="Nombre de ruta...">
+                </div>
+                <div class="form-group">
+                    <label>Día</label>
+                    <select id="search-horario-dia">
+                        <option value="">-- Todos --</option>
+                        <option value="Lunes">Lunes</option>
+                        <option value="Martes">Martes</option>
+                        <option value="Miércoles">Miércoles</option>
+                        <option value="Jueves">Jueves</option>
+                        <option value="Viernes">Viernes</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Conductor</label>
+                    <input type="text" id="search-horario-conductor" placeholder="Nombre conductor...">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+                </div>
+            </form>
+        </div>
+      </div>
+
+      <div id="search-alerta-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2><i class="fas fa-search"></i> Buscar Alerta</h2>
+            <form id="form-search-alerta">
+                <div class="form-group">
+                    <label>Unidad / Camión</label>
+                    <input type="text" id="search-alerta-unidad" placeholder="Ej. TEC-01">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Alerta</label>
+                    <input type="text" id="search-alerta-tipo" placeholder="Ej. Retraso, Accidente...">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+                </div>
+            </form>
+        </div>
+      </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
