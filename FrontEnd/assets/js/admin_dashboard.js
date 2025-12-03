@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let horariosCargados = []; // NUEVA
   let alertasCargadas = [];  // NUEVA
   let busMarkers = {};
+  let alertCount = 0;
 
   // --- LUGARES PREDEFINIDOS (COMO FAVORITOS) ---
 const LUGARES_CLAVE = [
@@ -97,7 +98,7 @@ const LUGARES_CLAVE = [
 
       // --- Cargar datos dinámicamente ---
       if (targetId === "#mapa") {
-        fetchAndDrawBuses();
+        inicializarDashboard();
       }
       if (targetId === "#usuarios") {
         cargarUsuarios();
@@ -138,37 +139,97 @@ const LUGARES_CLAVE = [
     iconSize: [35, 35],
     iconAnchor: [17, 17],
   });
-  async function fetchAndDrawBuses() {
+
+  //KPIS
+  // --- NUEVA FUNCIÓN PRINCIPAL PARA EL DASHBOARD ---
+  // Esta función carga camiones (mapa), conductores (KPI) y alertas (KPI)
+  async function inicializarDashboard() {
+    
+    // 1. Cargar Camiones y Mapa
     try {
-      // CAMBIO: BACKEND_URL
       const response = await fetch(BACKEND_URL + "/api/camiones", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("No se pudieron cargar los camiones");
-      const camiones = await response.json();
-      Object.values(busMarkers).forEach((marker) => map.removeLayer(marker));
-      busMarkers = {};
-      document.getElementById("kpi-total-buses").textContent = camiones.length;
-      const activos = camiones.filter((c) => c.estado === "activo").length;
-      document.getElementById("kpi-drivers-active").textContent = activos;
-      camiones.forEach((camion) => {
-        if (camion.ubicacionActual) {
-          const [lng, lat] = camion.ubicacionActual.coordinates;
-          const marker = L.marker([lat, lng], { icon: busIcon })
-            .addTo(map)
-            .bindPopup(`🚍 **${camion.numeroUnidad}** (${camion.placa})`);
-          busMarkers[camion._id] = marker;
-        }
-      });
+      if (response.ok) {
+        const camiones = await response.json();
+        camionesCargados = camiones; // Actualizar global
+
+        // Limpiar marcadores viejos
+        Object.values(busMarkers).forEach((marker) => map.removeLayer(marker));
+        busMarkers = {};
+
+        // KPI: Total de Camiones
+        document.getElementById("kpi-total-buses").textContent = camiones.length;
+
+        // Dibujar en el mapa
+        camiones.forEach((camion) => {
+          if (camion.ubicacionActual) {
+            const [lng, lat] = camion.ubicacionActual.coordinates;
+            const marker = L.marker([lat, lng], { icon: busIcon })
+              .addTo(map)
+              .bindPopup(`🚍 **${camion.numeroUnidad}** (${camion.placa})`);
+            busMarkers[camion._id] = marker;
+          }
+        });
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error cargando camiones:", error);
+    }
+
+    // 2. Cargar Usuarios para KPI de Conductores Activos
+    try {
+      const responseUsers = await fetch(BACKEND_URL + "/api/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (responseUsers.ok) {
+        const users = await responseUsers.json();
+        usuariosCargados = users; // Actualizamos global para reutilizar
+
+        // Filtramos SOLO conductores
+        const todosLosConductores = users.filter(u => u.tipo === 'conductor');
+        
+        // Filtramos Activos
+        const conductoresActivos = todosLosConductores.filter(u => {
+            // Normalizamos el estado a minúsculas por si acaso viene "Activo" o "ACTIVO"
+            const estado = (u.estado || 'activo').toLowerCase().trim();
+            return estado === 'activo';
+        });
+
+        console.log(`📊 DEBUG CONDUCTORES:
+          - Total Usuarios: ${users.length}
+          - Total Conductores: ${todosLosConductores.length}
+          - Conductores Activos: ${conductoresActivos.length}
+          - Lista Activos: ${conductoresActivos.map(c => c.nombre).join(', ')}
+        `);
+            document.getElementById("kpi-drivers-active").textContent = conductoresActivos;
+        }
+    } catch (error) {
+        console.error("Error cargando KPI conductores:", error);
+    }
+
+    // 3. Cargar Alertas para KPI
+    try {
+        const responseAlerts = await fetch(BACKEND_URL + "/api/notificaciones", {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (responseAlerts.ok) {
+            const alerts = await responseAlerts.json();
+            alertCount = alerts.length; // Sincronizar variable global
+            document.getElementById("kpi-active-alerts").textContent = alertCount;
+        }
+    } catch (error) {
+        console.error("Error cargando KPI alertas:", error);
     }
   }
-  fetchAndDrawBuses();
+
+  // Ejecutar al inicio
+  inicializarDashboard();
+
   const kpiStudents = document.getElementById("kpi-students-waiting");
   const kpiAlerts = document.getElementById("kpi-active-alerts");
-  let studentCount = 0,
-    alertCount = 0;
+  let studentCount = 0;
+  
+  // Eventos de Socket
   socket.on("locationUpdate", (data) => {
     const marker = busMarkers[data.camionId];
     if (marker) {
@@ -182,10 +243,15 @@ const LUGARES_CLAVE = [
       busMarkers[data.camionId] = newMarker;
     }
   });
+
   socket.on("newIncidentAlert", (data) => {
-    alert(`🚨 ¡NUEVO INCIDENTE!\nCamión: ${data.camionId}\nTipo: ${data.tipo}`);
+    alert(
+      `🚨 ¡NUEVO INCIDENTE!\nCamión: ${data.camionId}\nTipo: ${data.tipo}`
+    );
+    // Incrementamos el contador global que ya sincronizamos en inicializarDashboard
     alertCount++;
     kpiAlerts.textContent = alertCount;
+
     const marker = busMarkers[data.camionId];
     if (marker) {
       marker.setIcon(alertIcon);
@@ -198,6 +264,7 @@ const LUGARES_CLAVE = [
         .openPopup();
     }
   });
+
   socket.on("studentWaiting", (data) => {
     studentCount++;
     kpiStudents.textContent = studentCount;
@@ -208,6 +275,76 @@ const LUGARES_CLAVE = [
       .addTo(map)
       .bindPopup(`Estudiante esperando (ID: ${data.userId})`);
   });
+
+  // async function fetchAndDrawBuses() {
+  //   try {
+  //     // CAMBIO: BACKEND_URL
+  //     const response = await fetch(BACKEND_URL + "/api/camiones", {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     if (!response.ok) throw new Error("No se pudieron cargar los camiones");
+  //     const camiones = await response.json();
+  //     Object.values(busMarkers).forEach((marker) => map.removeLayer(marker));
+  //     busMarkers = {};
+  //     document.getElementById("kpi-total-buses").textContent = camiones.length;
+  //     const activos = camiones.filter((c) => c.estado === "activo").length;
+  //     document.getElementById("kpi-drivers-active").textContent = activos;
+  //     camiones.forEach((camion) => {
+  //       if (camion.ubicacionActual) {
+  //         const [lng, lat] = camion.ubicacionActual.coordinates;
+  //         const marker = L.marker([lat, lng], { icon: busIcon })
+  //           .addTo(map)
+  //           .bindPopup(`🚍 **${camion.numeroUnidad}** (${camion.placa})`);
+  //         busMarkers[camion._id] = marker;
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+  // fetchAndDrawBuses();
+  // const kpiStudents = document.getElementById("kpi-students-waiting");
+  // const kpiAlerts = document.getElementById("kpi-active-alerts");
+  // let studentCount = 0;
+  // socket.on("locationUpdate", (data) => {
+  //   const marker = busMarkers[data.camionId];
+  //   if (marker) {
+  //     marker.setLatLng([data.location.lat, data.location.lng]);
+  //   } else {
+  //     const newMarker = L.marker([data.location.lat, data.location.lng], {
+  //       icon: busIcon,
+  //     })
+  //       .addTo(map)
+  //       .bindPopup(`🚍 **${data.numeroUnidad}**`);
+  //     busMarkers[data.camionId] = newMarker;
+  //   }
+  // });
+  // socket.on("newIncidentAlert", (data) => {
+  //   alert(`🚨 ¡NUEVO INCIDENTE!\nCamión: ${data.camionId}\nTipo: ${data.tipo}`);
+  //   alertCount++;
+  //   kpiAlerts.textContent = alertCount;
+  //   const marker = busMarkers[data.camionId];
+  //   if (marker) {
+  //     marker.setIcon(alertIcon);
+  //     marker
+  //       .bindPopup(
+  //         `🚨 **ALERTA: ${data.tipo}**<br>🚍 ${data.camionId}<br>${
+  //           data.detalles || ""
+  //         }`
+  //       )
+  //       .openPopup();
+  //   }
+  // });
+  // socket.on("studentWaiting", (data) => {
+  //   studentCount++;
+  //   kpiStudents.textContent = studentCount;
+  //   L.circle([data.location.lat, data.location.lng], {
+  //     color: "var(--color-exito)",
+  //     radius: 50,
+  //   })
+  //     .addTo(map)
+  //     .bindPopup(`Estudiante esperando (ID: ${data.userId})`);
+  // });
 
   // --- 4. CRUD USUARIOS ---
   const modalUser = document.getElementById("edit-user-modal");
@@ -493,6 +630,7 @@ const LUGARES_CLAVE = [
         alert("¡Usuario actualizado!");
         closeEditUserModal();
         cargarUsuarios();
+        inicializarDashboard(); // Actualizar KPIs
       } catch (error) {
         alert(error.message);
       }
@@ -520,6 +658,7 @@ const LUGARES_CLAVE = [
 
       alert("✅ Usuario eliminado correctamente");
       cargarUsuarios();
+      inicializarDashboard(); // Actualizar KPIs
     } catch (error) {
       console.error(error);
       alert("Error: " + error.message);
@@ -641,7 +780,7 @@ const LUGARES_CLAVE = [
         alert("¡Camión registrado!");
         formRegistrarCamion.reset();
         cargarCamiones();
-        fetchAndDrawBuses();
+        inicializarDashboard(); // Actualizar KPIs
       } catch (error) {
         alert(error.message);
       }
@@ -674,7 +813,7 @@ const LUGARES_CLAVE = [
       if (!response.ok) throw new Error("No se pudo eliminar");
       alert("¡Camión eliminado!");
       cargarCamiones();
-      fetchAndDrawBuses();
+      inicializarDashboard(); // Actualizar KPIs
     } catch (error) {
       alert(error.message);
     }

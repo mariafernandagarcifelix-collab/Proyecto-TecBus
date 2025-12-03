@@ -3,7 +3,10 @@ const mongoose = require("mongoose");
 
 // Basado en tu "Consulta 4"
 const prediccionSchema = new mongoose.Schema({
-  ruta: { type: String },
+  ruta: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Ruta" 
+  },
   hora: { type: String },
 });
 
