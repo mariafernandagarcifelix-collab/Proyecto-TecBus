@@ -37,13 +37,13 @@ const LUGARES_CLAVE = [
         lat: 25.570119, 
         lon: -108.473013,
         tipo: "estacion"
-    },
-    {
-        nombre: "La Brecha",
-        lat: 25.523708, 
-        lon: -108.382035,
-        tipo: "tienda"
     }
+    // {
+    //     nombre: "La Brecha",
+    //     lat: 25.523708, 
+    //     lon: -108.382035,
+    //     tipo: "tienda"
+    // }
 ];
 
   // CAMBIO: Usamos SOCKET_URL en lugar de la dirección fija
@@ -143,71 +143,44 @@ const LUGARES_CLAVE = [
   //KPIS
   // --- NUEVA FUNCIÓN PRINCIPAL PARA EL DASHBOARD ---
   // Esta función carga camiones (mapa), conductores (KPI) y alertas (KPI)
+  // En tu archivo admin_dashboard.js, busca la función inicializarDashboard y usa esta:
+
   async function inicializarDashboard() {
-    
-    // 1. Cargar Camiones y Mapa
+    // 1. Camiones
     try {
-      const response = await fetch(BACKEND_URL + "/api/camiones", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const camiones = await response.json();
-        camionesCargados = camiones; // Actualizar global
-
-        // Limpiar marcadores viejos
-        Object.values(busMarkers).forEach((marker) => map.removeLayer(marker));
+      const res = await fetch(BACKEND_URL_API + "/camiones", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const camiones = await res.json();
+        camionesCargados = camiones;
+        
+        Object.values(busMarkers).forEach((m) => map.removeLayer(m));
         busMarkers = {};
-
-        // KPI: Total de Camiones
         document.getElementById("kpi-total-buses").textContent = camiones.length;
 
-        // Dibujar en el mapa
-        camiones.forEach((camion) => {
-          if (camion.ubicacionActual) {
-            const [lng, lat] = camion.ubicacionActual.coordinates;
-            const marker = L.marker([lat, lng], { icon: busIcon })
-              .addTo(map)
-              .bindPopup(`🚍 **${camion.numeroUnidad}** (${camion.placa})`);
-            busMarkers[camion._id] = marker;
+        camiones.forEach((c) => {
+          if (c.ubicacionActual) {
+            const [lng, lat] = c.ubicacionActual.coordinates;
+            const m = L.marker([lat, lng], { icon: busIcon }).addTo(map).bindPopup(`🚍 ${c.numeroUnidad}`);
+            busMarkers[c._id] = m;
           }
         });
       }
-    } catch (error) {
-      console.error("Error cargando camiones:", error);
-    }
+    } catch (e) { console.error(e); }
 
-    // 2. Cargar Usuarios para KPI de Conductores Activos
+    // 2. Conductores Activos (Lógica Estricta)
     try {
-      const responseUsers = await fetch(BACKEND_URL + "/api/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (responseUsers.ok) {
-        const users = await responseUsers.json();
-        usuariosCargados = users; // Actualizamos global para reutilizar
-
-        // Filtramos SOLO conductores
-        const todosLosConductores = users.filter(u => u.tipo === 'conductor');
+      const res = await fetch(BACKEND_URL_API + "/users", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const users = await res.json();
+        usuariosCargados = users;
         
-        // Filtramos Activos
-        const conductoresActivos = todosLosConductores.filter(u => {
-            // Normalizamos el estado a minúsculas por si acaso viene "Activo" o "ACTIVO"
-            const estado = (u.estado || 'activo').toLowerCase().trim();
-            return estado === 'activo';
-        });
+        // FILTRO EXACTO: Solo cuenta si el backend dice "En Servicio"
+        const activos = users.filter(u => u.tipo === 'conductor' && u.estado === 'En Servicio').length;
+        document.getElementById("kpi-drivers-active").textContent = activos;
+      }
+    } catch (e) { console.error(e); }
 
-        console.log(`📊 DEBUG CONDUCTORES:
-          - Total Usuarios: ${users.length}
-          - Total Conductores: ${todosLosConductores.length}
-          - Conductores Activos: ${conductoresActivos.length}
-          - Lista Activos: ${conductoresActivos.map(c => c.nombre).join(', ')}
-        `);
-            document.getElementById("kpi-drivers-active").textContent = conductoresActivos;
-        }
-    } catch (error) {
-        console.error("Error cargando KPI conductores:", error);
-    }
-
-    // 3. Cargar Alertas para KPI
+    // 3. Alertas
     try {
         const responseAlerts = await fetch(BACKEND_URL + "/api/notificaciones", {
             headers: { Authorization: `Bearer ${token}` },
@@ -235,6 +208,7 @@ const LUGARES_CLAVE = [
     if (marker) {
       marker.setLatLng([data.location.lat, data.location.lng]);
     } else {
+      inicializarDashboard();
       const newMarker = L.marker([data.location.lat, data.location.lng], {
         icon: busIcon,
       })
@@ -385,33 +359,45 @@ const LUGARES_CLAVE = [
   }
 
   // FUNCIÓN PURA PARA RENDERIZAR (Reutilizable por el buscador)
-  function renderTablaUsuarios(listaUsuarios) {
-    const tablaBody = document.getElementById("tabla-usuarios-body");
-    if (!tablaBody) return;
-    tablaBody.innerHTML = "";
-
-    if (listaUsuarios.length === 0) {
-        tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron usuarios.</td></tr>';
+  function renderTablaUsuarios(lista) {
+    const tbody = document.getElementById("tabla-usuarios-body");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No hay usuarios.</td></tr>';
         return;
     }
 
-    listaUsuarios.forEach((user) => {
-        const row = document.createElement("tr");
-        let badgeClass = "estudiante";
-        if (user.tipo === "administrador") badgeClass = "admin";
-        else if (user.tipo === "conductor") badgeClass = "conductor";
+    lista.forEach((u) => {
+      const row = document.createElement("tr");
+      
+      // Lógica de colores de Badge
+      let badgeClass = "estudiante"; // Default
+      let estado = u.estado || "Inactivo"; // Default
 
-        row.innerHTML = `
-            <td>${user.nombre}</td>
-            <td>${user.email}</td>
-            <td><span class="badge badge-${badgeClass}">${user.tipo}</span></td>
-            <td>${user.estado || "activo"}</td>
-            <td>
-                <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${user._id}" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-danger btn-sm btn-delete-user" data-id="${user._id}" title="Eliminar"><i class="fas fa-trash"></i></button>
-            </td>
-        `;
-        tablaBody.appendChild(row);
+      if (u.tipo === "administrador") {
+          badgeClass = "admin"; // Verde
+          estado = "Admin";
+      } else if (u.tipo === "conductor") {
+          // Colores específicos para estados del conductor
+          if (u.estado === "En Servicio") badgeClass = "admin"; // Verde (reutilizado)
+          else if (u.estado === "Inicio de Recorridos") badgeClass = "conductor"; // Naranja
+          else badgeClass = "secondary"; // Gris (para "Fin..." o "Sin recorridos")
+      }
+
+      // Ajuste visual en CSS para .badge-secondary si no existe
+      const badgeHtml = `<span class="badge badge-${badgeClass}" style="${badgeClass === 'secondary' ? 'background:#666; color:white;' : ''}">${estado}</span>`;
+
+      row.innerHTML = `
+        <td>${u.nombre}</td>
+        <td>${u.email}</td>
+        <td>${u.tipo}</td>
+        <td>${badgeHtml}</td>
+        <td>
+            <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${u._id}"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger btn-sm btn-delete-user" data-id="${u._id}"><i class="fas fa-trash"></i></button>
+        </td>`;
+      tbody.appendChild(row);
     });
   }
 
