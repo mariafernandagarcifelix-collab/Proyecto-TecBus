@@ -20,12 +20,12 @@
       // y usa localhost cuando la IP es 127.0.0.1
       const BACKEND_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
         ? "http://localhost:5000"
-        : "http://${location.hostname}:5000";
+        : `http://${location.hostname}:5000`;
 
       // La URL para Socket.IO es el host (sin el puerto)
       const SOCKET_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
         ? "http://localhost:5000"
-        : "http://${location.hostname}:5000";
+        : `http://${location.hostname}:5000`;
     </script>
     </head>
 
@@ -79,12 +79,6 @@
             </div>
           </div>
 
-          <div class="d-flex justify-content-end mb-4">
-            <a href="#" class="text-primary text-decoration-none small fw-bold">
-              ¿Olvidaste tu Contraseña?
-            </a>
-          </div>
-
           <div id="auth-message" class="text-danger mb-3"></div>
 
           <button
@@ -108,5 +102,4 @@
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
       <script src="assets/js/login.js"></script>
     </body>
-  </html>
 </html>

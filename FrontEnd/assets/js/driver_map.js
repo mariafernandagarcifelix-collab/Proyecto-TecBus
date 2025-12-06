@@ -76,9 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // 4. LÓGICA DE GEOFENCING (DETECTAR LLEGADA)
   // ============================================================
 
-  // Fórmula de Haversine para calcular metros entre dos coordenadas
   function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // Radio de la tierra en metros
+      const R = 6371e3; 
       const φ1 = lat1 * Math.PI/180;
       const φ2 = lat2 * Math.PI/180;
       const Δφ = (lat2-lat1) * Math.PI/180;
@@ -88,8 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 Math.cos(φ1) * Math.cos(φ2) *
                 Math.sin(Δλ/2) * Math.sin(Δλ/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-      return R * c; // Distancia en metros
+      return R * c; 
   }
 
   function verificarLlegadaDestino(latActual, lngActual) {
@@ -97,32 +95,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const distancia = calcularDistanciaMetros(latActual, lngActual, DESTINO_ACTUAL.lat, DESTINO_ACTUAL.lng);
       
-      // Debug en consola para ver qué tan cerca estás
-      // console.log(`Distancia al destino: ${Math.round(distancia)} metros`);
-
       if (distancia < RADIO_DETECCION_METROS) {
           console.log("✅ ¡Llegada detectada!");
-          LLEGADA_DETECTADA = true; // Bloquear para no disparar múltiples veces
-          avanzarSiguienteTurno();
-      }
-  }
-
-  function avanzarSiguienteTurno() {
-      // 1. Verificar si hay más viajes hoy
-      if (INDICE_VIAJE_ACTUAL >= MIS_VIAJES_HOY.length - 1) {
-          // SE ACABARON LOS VIAJES
-          finDelServicio();
-      } else {
-          // 2. Cargar el siguiente
-          INDICE_VIAJE_ACTUAL++;
-          const siguienteViaje = MIS_VIAJES_HOY[INDICE_VIAJE_ACTUAL];
-          
-          // Notificación Visual y Sonora
-          if("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
-          alert(`🏁 LLegada a destino detectada.\n\n🔄 Iniciando siguiente ruta: ${siguienteViaje.rutaNombre}\n⏰ Horario: ${siguienteViaje.hora}`);
-          
-          // Cargar la nueva ruta
-          cargarRutaActiva(siguienteViaje);
+          LLEGADA_DETECTADA = true; 
+          alert(`🏁 Has llegado a tu destino (Ruta: ${routeDisplay.textContent}).`);
+          // Aquí podríamos forzar una actualización de estado para ver si sigue otro viaje
+          actualizarEstadoConductor();
       }
   }
 
@@ -132,29 +110,40 @@ document.addEventListener("DOMContentLoaded", () => {
       statusDisplay.className = "status-indicator status-off";
       statusDisplay.style.color = "var(--color-error)";
       DESTINO_ACTUAL = null;
-      if (rutaPolyline) map.removeLayer(rutaPolyline);
-      
-      alert("🏁 Has llegado al destino final de hoy.\nTu estado ahora es: Fuera de Servicio.");
+      if (typeof routingControl !== 'undefined' && routingControl) {
+           map.removeControl(routingControl);
+           routingControl = null;
+      }
+      if (typeof rutaPolyline !== 'undefined' && rutaPolyline) {
+           map.removeLayer(rutaPolyline);
+      }
   }
 
 
-  // ============================================================
+ // ============================================================
   // 5. CARGA DE DATOS Y RUTAS
   // ============================================================
-// Variable global para guardar el control de ruta y poder borrarlo después
   let routingControl = null; 
+  let currentRouteId = null; // Para evitar recargar la misma ruta
 
   async function cargarRutaActiva(viaje) {
+      // Si es la misma ruta que ya tenemos cargada, no hacemos nada (ahorrar recursos)
+      if (currentRouteId === viaje.rutaId) return;
+      currentRouteId = viaje.rutaId;
+
       // 1. Actualizar Textos UI
       routeDisplay.textContent = viaje.rutaNombre;
-      statusDisplay.innerHTML = `● En Ruta (${viaje.hora})`;
+      statusDisplay.innerHTML = `● En Servicio (${viaje.hora})`;
       statusDisplay.className = "status-indicator status-on";
       statusDisplay.style.color = "var(--color-exito)";
 
       try {
           // 2. Limpiar mapa anterior
-          if (rutaPolyline) map.removeLayer(rutaPolyline); // Limpiar línea simple vieja
-          if (routingControl) map.removeControl(routingControl); // Limpiar ruta inteligente vieja
+          if (typeof rutaPolyline !== 'undefined' && rutaPolyline) map.removeLayer(rutaPolyline);
+          if (routingControl) {
+              map.removeControl(routingControl);
+              routingControl = null;
+          }
           
           // 3. Obtener datos de la ruta
           const response = await fetch(`${BACKEND_URL}/api/rutas/${viaje.rutaId}`, {
@@ -164,38 +153,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
           if (ruta.paradas && ruta.paradas.length > 0) {
               
-              // Convertir paradas a formato Waypoints de Leaflet
               const waypoints = ruta.paradas.map(p => L.latLng(
                   p.ubicacion.coordinates[1], 
                   p.ubicacion.coordinates[0]
               ));
 
-              // 4. Dibujar la Ruta Inteligente (Sigue calles)
+              // 4. Dibujar la Ruta Inteligente
               routingControl = L.Routing.control({
                   waypoints: waypoints,
                   router: L.Routing.osrmv1({
-                      serviceUrl: 'https://router.project-osrm.org/route/v1', // Servidor público demo
+                      serviceUrl: 'https://router.project-osrm.org/route/v1',
                       profile: 'driving'
                   }),
-                  // Opciones visuales de la línea
                   lineOptions: {
-                      styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] // Usa tu color primario aquí
+                      styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] 
                   },
-                  // Opciones para ocultar cosas que no queremos (instrucciones paso a paso, marcadores extra, etc)
-                  createMarker: function() { return null; }, // No crear marcadores automáticos (usamos los nuestros)
-                  addWaypoints: false,      // No permitir al usuario agregar puntos
-                  draggableWaypoints: false, // No permitir arrastrar
-                  fitSelectedRoutes: true,   // Centrar mapa en la ruta
-                  show: false                // Ocultar la caja de texto con instrucciones
+                  createMarker: function() { return null; }, 
+                  addWaypoints: false,      
+                  draggableWaypoints: false, 
+                  fitSelectedRoutes: true,   
+                  show: false                
               }).addTo(map);
 
-              // 5. ESTABLECER DESTINO PARA EL GEOFENCING
-              // El routing es asíncrono, pero el destino geográfico sigue siendo la última parada
+              // 5. ESTABLECER DESTINO
               const ultimoPunto = waypoints[waypoints.length - 1];
               DESTINO_ACTUAL = { lat: ultimoPunto.lat, lng: ultimoPunto.lng };
-              
               LLEGADA_DETECTADA = false; 
-              console.log("🚩 Nuevo destino (Geofence) fijado en:", DESTINO_ACTUAL);
+              console.log(`🗺️ Ruta cargada: ${ruta.nombre}`);
           }
       } catch (error) {
           console.error("Error cargando ruta:", error);
@@ -203,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function inicializarSistema() {
+      // Esta función se corre una vez al inicio para obtener el camión
       try {
           // A. Obtener Camión
           const resCamion = await fetch(BACKEND_URL + "/api/users/mi-camion", { headers: { Authorization: `Bearer ${token}` }});
@@ -217,74 +202,116 @@ document.addEventListener("DOMContentLoaded", () => {
           } else {
                routeDisplay.textContent = "--";
                statusDisplay.textContent = "● Sin Camión Asignado";
-               return; // No iniciar nada si no tiene camión
+               return; 
           }
-
-          // B. Obtener TODOS los horarios del día
-          const resHorarios = await fetch(BACKEND_URL + "/api/horarios", { headers: { Authorization: `Bearer ${token}` }});
-          const todosHorarios = await resHorarios.json();
-          
-          const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-          const hoyBackend = {
-            "lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles",
-            "jueves": "Jueves", "viernes": "Viernes", "sabado": "Sábado", "domingo": "Domingo"
-          }[dias[new Date().getDay()]];
-
-          // Filtrar mis viajes de hoy
-          MIS_VIAJES_HOY = todosHorarios.filter(h => {
-              const esHoy = h.diaSemana === hoyBackend;
-              const soyYo = h.infoConductor && h.infoConductor[0]?._id === (user._id || user.id);
-              const esMiCamion = String(h.camionUnidad) === String(dataCamion.numeroUnidad);
-              return esHoy && (soyYo || esMiCamion);
-          });
-
-          // Ordenar por hora
-          const horaAInt = (h) => parseInt(h.split(':')[0]) * 60 + parseInt(h.split(':')[1]);
-          MIS_VIAJES_HOY.sort((a, b) => horaAInt(a.hora) - horaAInt(b.hora));
-
-          if (MIS_VIAJES_HOY.length === 0) {
-              routeDisplay.textContent = "Día Libre";
-              statusDisplay.textContent = "● Sin Recorridos";
-              return;
-          }
-
-          // C. Determinar en qué viaje vamos (según la hora actual)
-          const now = new Date();
-          const horaActual = now.getHours() * 60 + now.getMinutes();
-          
-          // Buscamos el primer viaje que no haya terminado (hora + 45 mins aprox)
-          // Si todos pasaron, marcamos el último. Si ninguno empezó, marcamos el primero.
-          let indiceEncontrado = 0; 
-          
-          for (let i = 0; i < MIS_VIAJES_HOY.length; i++) {
-              const horaViaje = horaAInt(MIS_VIAJES_HOY[i].hora);
-              // Si la hora actual es menor que (horaViaje + 30 mins), asumimos que ese es el viaje actual/siguiente
-              if (horaActual < (horaViaje + 30)) {
-                  indiceEncontrado = i;
-                  break;
-              }
-              // Si ya es muy tarde, nos quedamos en el último (que seguramente activará fin de servicio)
-              if (i === MIS_VIAJES_HOY.length - 1) indiceEncontrado = i; 
-          }
-          
-          // Si ya es MUY tarde (2 horas despues del ultimo viaje), marcar fin
-          const ultimoViaje = MIS_VIAJES_HOY[MIS_VIAJES_HOY.length - 1];
-          if (horaActual > (horaAInt(ultimoViaje.hora) + 120)) {
-             finDelServicio();
-             iniciarGeolocalizacion(); // Iniciamos GPS solo para ubicación, sin lógica de ruta
-             return;
-          }
-
-          // D. Iniciar el viaje detectado
-          INDICE_VIAJE_ACTUAL = indiceEncontrado;
-          cargarRutaActiva(MIS_VIAJES_HOY[INDICE_VIAJE_ACTUAL]);
-          iniciarGeolocalizacion();
-
       } catch (error) {
           console.error("Error inicializando:", error);
       }
   }
 
+  // ============================================================
+  // 6. LÓGICA DE ESTADO DEL CONDUCTOR (LO QUE PEDISTE)
+  // ============================================================
+  
+  function obtenerDiaSemana() {
+    const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    return dias[new Date().getDay()];
+  }
+
+  const mapaDiasBackend = {
+    "lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles",
+    "jueves": "Jueves", "viernes": "Viernes", "sabado": "Sábado", "domingo": "Domingo"
+  };
+
+  // Convierte "14:30" -> 870 minutos
+  function horaAEntero(horaStr) {
+    if (!horaStr) return 0;
+    const [h, m] = horaStr.split(':');
+    return parseInt(h) * 60 + parseInt(m);
+  }
+
+  async function actualizarEstadoConductor() {
+    if (!MI_CAMION_ID) return; // No hacer nada si no hay camión
+
+    try {
+      // 1. Descargar Horarios Frescos
+      const resHorarios = await fetch(BACKEND_URL + "/api/horarios", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!resHorarios.ok) return;
+      const todosHorarios = await resHorarios.json();
+      
+      // 2. Filtrar mis viajes de HOY
+      const hoyRaw = obtenerDiaSemana(); 
+      const hoyFormatted = mapaDiasBackend[hoyRaw]; 
+      
+      // Filtramos por ID de conductor (usuario logueado)
+      MIS_VIAJES_HOY = todosHorarios.filter(h => {
+          const esHoy = (h.diaSemana === hoyFormatted);
+          const conductorEsYo = h.infoConductor && h.infoConductor[0] && h.infoConductor[0]._id === (user._id || user.id);
+          return esHoy && conductorEsYo;
+      });
+
+      // Si no hay viajes hoy
+      if (MIS_VIAJES_HOY.length === 0) {
+        routeDisplay.textContent = "Día Libre";
+        statusDisplay.innerHTML = "● Fuera de Servicio";
+        statusDisplay.className = "status-indicator status-off";
+        statusDisplay.style.color = "var(--color-error)";
+        return;
+      }
+
+      // 3. Ordenar cronológicamente
+      MIS_VIAJES_HOY.sort((a, b) => horaAEntero(a.hora) - horaAEntero(b.hora));
+
+      // 4. CALCULAR ESTADO ACTUAL CON REGLA DE 20 MINUTOS
+      const now = new Date();
+      const minutosActuales = now.getHours() * 60 + now.getMinutes();
+
+      // Checar si ya acabamos el último viaje (+20 min)
+      const ultimoViaje = MIS_VIAJES_HOY[MIS_VIAJES_HOY.length - 1];
+      const finJornada = horaAEntero(ultimoViaje.hora) + 20; // TOLERANCIA DE 20 MINUTOS
+
+      if (minutosActuales > finJornada) {
+        // --- CASO: YA TERMINÓ TODO ---
+        finDelServicio();
+        // Aún mandamos GPS por si el chofer sigue manejando hacia la central, pero estado "Inactivo"
+        iniciarGeolocalizacion(); 
+        return;
+      }
+
+      // Buscar el viaje activo o siguiente
+      // Definición: El primer viaje que NO se haya vencido (Hora salida + 20min > Hora actual)
+      let viajeActivo = null;
+
+      for (const viaje of MIS_VIAJES_HOY) {
+          const horaSalida = horaAEntero(viaje.hora);
+          const horaLimiteViaje = horaSalida + 20; // 20 mins de tolerancia para considerarlo "en curso"
+          
+          // Si la hora actual es menor o igual al límite de este viaje,
+          // significa que este viaje es el actual (o el próximo que viene).
+          if (minutosActuales <= horaLimiteViaje) {
+              viajeActivo = viaje;
+              break; // Encontramos el viaje, rompemos el ciclo
+          }
+      }
+
+      if (viajeActivo) {
+          // --- CASO: EN SERVICIO ---
+          // Cargamos la ruta (si es diferente, la función interna se encarga de redibujar)
+          cargarRutaActiva(viajeActivo);
+          iniciarGeolocalizacion();
+      } else {
+          // Fallback raro (si llegamos aquí es que no entró en el if > finJornada pero tampoco halló viaje)
+          // Asumiremos fuera de servicio por seguridad
+          finDelServicio();
+      }
+
+    } catch (error) {
+      console.error("Error estado conductor:", error);
+    }
+  }
 
   // ============================================================
   // 6. GPS Y SOCKETS
@@ -494,10 +521,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     return dias[new Date().getDay()];
   }
-  const mapaDiasBackend = {
-    "lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles",
-    "jueves": "Jueves", "viernes": "Viernes", "sabado": "Sábado", "domingo": "Domingo"
-  };
+  // const mapaDiasBackend = {
+  //   "lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles",
+  //   "jueves": "Jueves", "viernes": "Viernes", "sabado": "Sábado", "domingo": "Domingo"
+  // };
   function horaAEntero(horaStr) {
     if (!horaStr) return 0;
     const [h, m] = horaStr.split(':');

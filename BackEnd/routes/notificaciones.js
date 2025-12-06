@@ -15,21 +15,23 @@ webpush.setVapidDetails(
 );
 
 // --- RUTA 1: SUSCRIBIRSE (POST /api/notificaciones/subscribe) ---
-router.post("/subscribe", protect, async (req, res) => {
-  const subscription = req.body;
-  const userId = req.user._id;
+// router.post("/subscribe", protect, async (req, res) => {
+//   const subscription = req.body;
+//   const userId = req.user._id;
 
-  try {
-    // Guardamos la suscripción en el Usuario
-    await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
+//   try {
+//     // Guardamos la suscripción en el Usuario
+//     await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
     
-    console.log(`✅ Usuario ${req.user.nombre} suscrito a notificaciones.`);
-    res.status(201).json({ message: "Suscripción guardada correctamente" });
-  } catch (error) {
-    console.error("Error guardando suscripción:", error);
-    res.status(500).json({ message: "Error al suscribirse" });
-  }
-});
+//     console.log(`✅ Usuario ${req.user.nombre} suscrito a notificaciones.`);
+//     res.status(201).json({ message: "Suscripción guardada correctamente" });
+//   } catch (error) {
+//     console.error("Error guardando suscripción:", error);
+//     res.status(500).json({ message: "Error al suscribirse" });
+//   }
+// });
+
+
 
 // --- RUTA 2: PRUEBA DE PREDICCIÓN (GET /api/notificaciones/mi-prediccion) ---
 // Esta la llama el student_map.js al cargar para probar
@@ -47,6 +49,33 @@ router.get("/mi-prediccion", protect, async (req, res) => {
     const payload = JSON.stringify({
       title: "🚍 Predicción TecBus",
       body: "Hola " + user.nombre.split(" ")[0] + ", tu camión habitual llegará en 5 mins (Prueba).",
+      icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png" // Icono de bus
+    });
+
+    // Enviamos la notificación
+    await webpush.sendNotification(user.pushSubscription, payload);
+    
+    res.json({ message: "Notificación de prueba enviada" });
+  } catch (error) {
+    console.error("Error enviando push:", error);
+    res.status(500).json({ message: "Error al enviar notificación" });
+  }
+});
+
+router.get("/mi-prediccion-prueba", protect, async (req, res) => {
+  const userId = req.user._id;
+
+  try {
+    
+    const user = await User.findById(userId);
+    if (!user || !user.pushSubscription) {
+      return res.status(404).json({ message: "No tienes suscripción activa" });
+    }
+    
+    // Creamos el mensaje (Payload)
+    const payload = JSON.stringify({
+      title: "🚍 Notificaciones TecBus",
+      body: "Hola " + user.nombre.split(" ")[0] + ", las notificaciones han sido activadas correctamente.",
       icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png" // Icono de bus
     });
 
@@ -127,6 +156,27 @@ router.get("/", protect, async (req, res) => {
     console.error("Error obteniendo historial:", error);
     res.status(500).json({ message: "Error al cargar alertas" });
   }
+});
+
+// Ruta para recibir la suscripción desde el Frontend
+router.post("/suscribir", protect, async (req, res) => {
+  const subscription = req.body;
+  const userId = req.user._id; // Obtenido del token
+
+  try {
+    // Guardamos la suscripción en el documento del usuario
+    await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
+    res.status(200).json({ message: "Suscripción guardada." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al guardar suscripción." });
+  }
+});
+
+// Ruta para enviar una notificación de prueba (para que verifiques)
+router.post("/enviar-test", async (req, res) => {
+    const { userId, mensaje } = req.body;
+    // Lógica para buscar usuario y usar webpush.sendNotification...
 });
 
 module.exports = router;

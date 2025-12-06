@@ -40,19 +40,7 @@
         <h1>TECNM Guasave</h1>
         <p>Transporte Estudiantil</p>
       </div>
-      <div class="profile-dropdown">
-        <i class="fas fa-user-circle profile-icon" id="profile-toggle"></i>
-        <div class="dropdown-content" id="profile-menu">
-          <div class="dropdown-header">
-            Hola, <span id="user-name-display">Estudiante</span>
-          </div>
-          <a href="#" id="btn-open-perfil-header"
-            ><i class="fas fa-id-card"></i> Ver Datos</a
-          >
-          <a href="#" id="logout-button"
-            ><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a
-          >
-        </div>
+      
       </div>
     </header>
 
@@ -196,6 +184,24 @@
 
     <div id="map-container">
       <div id="map"></div>
+      <div class="map-floating-controls">
+        <button
+          id="btn-activar-notificaciones"
+          class="control-btn btn-glow-blue"
+          title="Activar Notificaciones"
+        >
+          <i class="fas fa-bell"></i>
+          <span>Alertas</span>
+        </button>
+
+        <button
+          id="btn-abrir-ayuda"
+          class="control-btn btn-glass"
+          title="Instrucciones de las Notificaciones"
+        >
+          <i class="fas fa-question"></i>
+        </button>
+      </div>
       <div class="map-controls card-panel">
         <label for="ruta-selector" class="control-label"
           >🚚 Selecciona tu Ruta</label
@@ -211,6 +217,87 @@
         <button id="btn-ver-historial" class="btn btn-secondary-sm">
           <i class="fas fa-history"></i> Ver Historial
         </button>
+      </div>
+    </div>
+
+    <div id="fullscreen-instrucciones" class="fullscreen-overlay">
+      <div class="overlay-header">
+        <div class="header-title">
+          <i class="fas fa-broadcast-tower"></i>  Guía de Conexión
+        </div>
+        <button id="btn-cerrar-instrucciones" class="close-overlay-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="overlay-content">
+        <div class="container-fluid" style="max-width: 1200px">
+          <h2
+            class="text-center mb-5 fade-in-up"
+            style="color: white; font-weight: 700"
+          >
+            Activa tus Alertas
+          </h2>
+
+          <div class="instructions-grid">
+            <div class="instruction-card fade-in-up delay-1">
+              <div class="card-icon" style="color: #28a745">
+                <i class="fab fa-chrome"></i> <i class="fab fa-edge"></i>
+              </div>
+              <h3>Chrome / Edge</h3>
+              <p class="desc">Nativo y rápido.</p>
+              <ul class="steps">
+                <li>
+                  1. Clic en el botón <i class="fas fa-bell"></i> del mapa.
+                </li>
+                <li>
+                  2. Selecciona <span class="badge-allow">Permitir</span> cuando
+                  pregunte.
+                </li>
+                <li>
+                  3. Si no pregunta, clic en el candado 🔒 de la URL y
+                  "Restablecer permisos".
+                </li>
+              </ul>
+            </div>
+
+            <div class="instruction-card fade-in-up delay-2">
+              <div class="card-icon" style="color: #ff5722">
+                <i class="fas fa-shield-alt"></i>
+              </div>
+              <h3>Brave Browser</h3>
+              <p class="desc">Requiere permiso especial.</p>
+              <ul class="steps">
+                <li>
+                  1. Ve a <strong>Configuración</strong> >
+                  <strong>Privacidad</strong>.
+                </li>
+                <li>
+                  2. Activa:
+                  <em>"Usar servicios de Google para mensajería push"</em>.
+                </li>
+                <li>3. Reinicia el navegador.</li>
+              </ul>
+            </div>
+
+            <div class="instruction-card fade-in-up delay-3">
+              <div class="card-icon" style="color: #fff">
+                <i class="fab fa-apple"></i>
+              </div>
+              <h3>iOS (iPhone/iPad)</h3>
+              <p class="desc">Requiere instalar como App.</p>
+              <ul class="steps">
+                <li>
+                  1. Toca el botón <strong>Compartir</strong>
+                  <i class="fas fa-share-square"></i>.
+                </li>
+                <li>2. Elige <strong>"Agregar a Inicio"</strong>.</li>
+                <li>3. Abre la nueva App creada en tu inicio.</li>
+                <li>4. Activa las alertas desde ahí.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

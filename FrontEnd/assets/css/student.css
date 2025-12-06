@@ -23,17 +23,34 @@ header {
   background-color: var(--color-superficie);
   padding: 12px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  position: relative;
+  /* Quitamos space-between para controlar el centrado manualmente */
+  position: relative; 
   z-index: 1000;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-  flex-shrink: 0; /* Evita que el header se encoja */
+  flex-shrink: 0;
+  height: 70px; /* Altura fija ayuda al centrado vertical */
 }
 
-.header-title {
-  text-align: center;
+/* El botón de menú se queda a la izquierda por flujo normal */
+.menu-icon {
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: var(--color-primario);
+  position: relative;
+  z-index: 2; /* Para que quede pulsable encima del título si se solapan en móviles muy pequeños */
 }
+
+/* Título centrado absolutamente */
+.header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%); /* Esto lo centra perfectamente */
+  text-align: center;
+  width: auto;
+  white-space: nowrap;
+}
+
 .header-title h1 {
   font-size: 1.1rem;
   font-weight: 600;
@@ -43,6 +60,12 @@ header {
   font-size: 0.7rem;
   margin: 0;
   color: var(--color-texto-gris);
+}
+
+@media (min-width: 768px) {
+  .header-title h1 {
+    font-size: 1.4rem;
+  }
 }
 .menu-icon,
 .profile-icon {
@@ -298,6 +321,10 @@ header {
     transform: translateY(-20px);
     transition: transform 0.3s ease;
     color: var(--color-texto-modal);
+}
+
+.modal-dialog {
+    margin-top: 10%;
 }
 
 /* Ajuste para centrar verticalmente el contenido del perfil si sobra espacio */
@@ -783,7 +810,192 @@ header {
     margin-top: 50px;
 }
 
+/* --- CONTROLES FLOTANTES (Botones Bonitos) --- */
+.map-floating-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.control-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.control-btn span {
+    display: none; /* Oculto por defecto, se muestra al expandir si quieres */
+}
+
+/* Estilo Botón Alertas (Brillante) */
+.btn-glow-blue {
+    background: var(--color-primario);
+    color: white;
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+}
+.btn-glow-blue:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 25px rgba(0, 123, 255, 0.8);
+}
+.btn-glow-blue:active { transform: scale(0.95); }
+
+/* Estilo Botón Ayuda (Glass) */
+.btn-glass {
+    background: rgba(30, 30, 30, 0.8);
+    backdrop-filter: blur(5px);
+    color: var(--color-texto-claro);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.btn-glass:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: white;
+}
+
+
+/* --- MODAL FULLSCREEN (Estilo Horarios) --- */
+.fullscreen-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(10, 10, 10, 0.95); /* Fondo muy oscuro */
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.fullscreen-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.overlay-header {
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.header-title { font-size: 1.5rem; font-weight: 700; color: white; }
+.close-overlay-btn {
+    background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;
+    transition: transform 0.3s;
+}
+.close-overlay-btn:hover { transform: rotate(90deg); color: var(--color-error); }
+
+.overlay-content {
+    flex: 1;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+}
+
+/* GRID DE 3 COLUMNAS */
+.instructions-grid {
+    display: grid;
+    /* Forzamos 3 columnas iguales */
+    grid-template-columns: 1fr 1fr 1fr; 
+    gap: 30px;
+    margin-top: 40px;
+    width: 100%;
+}
+
+.instruction-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    transition: transform 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+.instruction-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--color-primario);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.card-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+.icon-standard { color: #28a745; }
+.icon-brave { color: #ff5722; }
+.icon-apple { color: #fff; }
+
+.instruction-card h3 { font-size: 1.4rem; color: white; margin-bottom: 10px; }
+.instruction-card .desc { color: #aaa; font-size: 0.9rem; margin-bottom: 20px; }
+
+.steps {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    margin-bottom: 20px;
+    margin-top: auto;
+}
+.steps li {
+    margin-bottom: 12px;
+    color: #ddd;
+    font-size: 0.95rem;
+    padding-left: 10px;
+    border-left: 2px solid var(--color-primario);
+}
+
+.badge-allow {
+    background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;
+}
+
+.tip {
+    background: rgba(0, 123, 255, 0.1);
+    color: #6ea8fe;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+/* Animaciones */
+.fade-in-up {
+    animation: fadeInUp 0.6s ease forwards;
+    opacity: 0; transform: translateY(20px);
+}
+
+
+
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
 /* Scrollbar para el fullscreen */
 .fullscreen-content::-webkit-scrollbar { width: 10px; }
 .fullscreen-content::-webkit-scrollbar-track { background: #111; }
 .fullscreen-content::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+
+/* RESPONSIVE (Para celulares) */
+@media (max-width: 992px) {
+    .instructions-grid {
+        grid-template-columns: 1fr; /* 1 columna en tablet/móvil */
+        max-width: 500px;
+        margin: 30px auto;
+    }
+    .instruction-card { min-height: auto; }
+}

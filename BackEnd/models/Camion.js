@@ -29,7 +29,8 @@ const camionSchema = new mongoose.Schema({
     // Referencias a otras colecciones
     conductorActual: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User' // Referencia a tu modelo 'User'
+        ref: 'User', // Referencia a tu modelo 'User'
+        required: false
     },
     rutaAsignada: {
         type: mongoose.Schema.Types.ObjectId,
