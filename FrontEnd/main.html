@@ -24,13 +24,19 @@
                 </div>
             </div>
             
-            <ul class="nav-menu">
+            <div class="mobile-toggle" id="mobile-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <ul class="nav-menu" id="nav-menu">
                 <li><a href="#inicio" class="nav-link active">Inicio</a></li>
                 <li><a href="#funcionalidades" class="nav-link">Funcionalidades</a></li>
                 <li><a href="#equipo" class="nav-link">Equipo</a></li>
-                <li><a href="#faq" class="nav-link">Ayuda</a></li> </ul>
+                <li><a href="#faq" class="nav-link">Ayuda</a></li>
+                <li class="mobile-only"><a href="index.html" class="btn btn-primary">Acceder</a></li>
+            </ul>
 
-            <div class="nav-actions">
+            <div class="nav-actions desktop-only">
                 <a href="index.html" class="btn btn-primary">Acceso a Plataforma</a>
             </div>
         </div>
@@ -231,33 +237,29 @@
                         Sí, TecBus es una plataforma web responsiva diseñada para funcionar perfectamente en cualquier navegador móvil (Chrome, Safari, etc.) sin necesidad de instalar nada.
                     </div>
                 </div>
-
                 <div class="accordion-item">
-        <div class="accordion-header">
-            ¿Cómo activo las alertas de llegada en mi dispositivo?
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <div class="accordion-body">
-            <p style="margin-bottom: 15px;">El proceso varía ligeramente según tu navegador para garantizar tu seguridad y privacidad:</p>
-            
-            <ul style="list-style: none; padding: 0;">
-                <li style="margin-bottom: 15px; border-left: 3px solid #28a745; padding-left: 15px;">
-                    <strong style="color: #28a745;"><i class="fab fa-chrome"></i> Android / Chrome / Edge:</strong><br>
-                    Es nativo. Solo haz clic en el botón <strong>"Activar Alertas"</strong> dentro del mapa y pulsa "Permitir". Si no aparece, da clic en el candado 🔒 de la URL y restablece los permisos.
-                </li>
-                
-                <li style="margin-bottom: 15px; border-left: 3px solid #fd7e14; padding-left: 15px;">
-                    <strong style="color: #fd7e14;"><i class="fas fa-shield-alt"></i> Navegador Brave:</strong><br>
-                    Brave bloquea esto por defecto. Ve a <em>Configuración > Privacidad</em> y activa la opción: <strong>"Usar servicios de Google para mensajería push"</strong>. Luego reinicia el navegador.
-                </li>
-
-                <li style="border-left: 3px solid #6610f2; padding-left: 15px;">
-                    <strong style="color: #6610f2;"><i class="fab fa-apple"></i> iOS (iPhone / iPad):</strong><br>
-                    Apple requiere instalar la web como App. Toca el botón <strong>Compartir</strong> <i class="fas fa-share-square"></i>, selecciona <strong>"Agregar a Inicio"</strong> y abre la nueva App desde tu pantalla principal.
-                </li>
-            </ul>
-        </div>
-    </div>
+                    <div class="accordion-header">
+                        ¿Cómo activo las alertas de llegada en mi dispositivo?
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-body">
+                        <p style="margin-bottom: 15px;">El proceso varía ligeramente según tu navegador para garantizar tu seguridad y privacidad:</p>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="margin-bottom: 15px; border-left: 3px solid #28a745; padding-left: 15px;">
+                                <strong style="color: #28a745;"><i class="fab fa-chrome"></i> Android / Chrome / Edge:</strong><br>
+                                Es nativo. Solo haz clic en el botón <strong>"Activar Alertas"</strong> dentro del mapa y pulsa "Permitir". Si no aparece, da clic en el candado 🔒 de la URL y restablece los permisos.
+                            </li>
+                            <li style="margin-bottom: 15px; border-left: 3px solid #fd7e14; padding-left: 15px;">
+                                <strong style="color: #fd7e14;"><i class="fas fa-shield-alt"></i> Navegador Brave:</strong><br>
+                                Brave bloquea esto por defecto. Ve a <em>Configuración > Privacidad</em> y activa la opción: <strong>"Usar servicios de Google para mensajería push"</strong>. Luego reinicia el navegador.
+                            </li>
+                            <li style="border-left: 3px solid #6610f2; padding-left: 15px;">
+                                <strong style="color: #6610f2;"><i class="fab fa-apple"></i> iOS (iPhone / iPad):</strong><br>
+                                Apple requiere instalar la web como App. Toca el botón <strong>Compartir</strong> <i class="fas fa-share-square"></i>, selecciona <strong>"Agregar a Inicio"</strong> y abre la nueva App desde tu pantalla principal.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -287,12 +289,40 @@
         document.querySelectorAll('.accordion-header').forEach(button => {
             button.addEventListener('click', () => {
                 const item = button.parentElement;
-                // Cerrar otros (opcional, para efecto acordeón puro)
                 document.querySelectorAll('.accordion-item').forEach(other => {
                     if(other !== item) other.classList.remove('active');
                 });
-                // Toggle actual
                 item.classList.toggle('active');
+            });
+        });
+
+        // --- NUEVA LÓGICA: MENÚ MÓVIL ---
+        const mobileToggle = document.getElementById('mobile-toggle');
+        const navMenu = document.getElementById('nav-menu');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', () => {
+                navMenu.classList.toggle('active');
+                // Cambiar icono de hamburguesa a X
+                const icon = mobileToggle.querySelector('i');
+                if (navMenu.classList.contains('active')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+        }
+
+        // Cerrar menú al hacer clic en un enlace
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                const icon = mobileToggle.querySelector('i');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
             });
         });
     </script>
