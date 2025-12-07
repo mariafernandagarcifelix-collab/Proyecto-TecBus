@@ -204,6 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
                statusDisplay.textContent = "● Sin Camión Asignado";
                return; 
           }
+          
       } catch (error) {
           console.error("Error inicializando:", error);
       }
@@ -738,6 +739,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Iniciar
   // 7. ARRANCAR EL SISTEMA
   inicializarSistema();
-  actualizarEstadoConductor();
-  setInterval(actualizarEstadoConductor, 60000);
+  inicializarSistema().then(() => {
+      // Checar estado inmediatamente y luego cada 30 segundos
+      actualizarEstadoConductor();
+      setInterval(actualizarEstadoConductor, 30000);
+  });
+  // actualizarEstadoConductor();
+  // setInterval(actualizarEstadoConductor, 60000);
 });

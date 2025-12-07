@@ -429,7 +429,7 @@
           </div>
         </section>
       </main>
-
+      
       <div id="edit-user-modal" class="modal">
         <div class="modal-content">
           <span class="close-button">&times;</span>
@@ -444,35 +444,38 @@
               <label for="edit-user-email">Correo</label>
               <input type="email" id="edit-user-email" required />
             </div>
-            <div class="form-group">
-              <label for="edit-user-tipo">Tipo</label>
-              <select id="edit-user-tipo">
-                <option value="estudiante">Estudiante</option>
-                <option value="conductor">Conductor</option>
-                <option value="administrador">Administrador</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="edit-user-estado">Estado</label>
-              <select id="edit-user-estado">
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
-                <option value="pendiente">Pendiente</option>
-              </select>
+            <div class="form-grid">
+                <div class="form-group">
+                  <label for="edit-user-tipo">Tipo</label>
+                  <select id="edit-user-tipo">
+                    <option value="estudiante">Estudiante</option>
+                    <option value="conductor">Conductor</option>
+                    <option value="administrador">Administrador</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="edit-user-estado">Estado</label>
+                  <select id="edit-user-estado">
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="pendiente">Pendiente</option>
+                  </select>
+                </div>
             </div>
 
             <div id="campos-conductor" class="form-group" style="display: none">
-              <label for="edit-user-licencia"
-                >¿Cuenta con Licencia Vigente?</label
-              >
+              <label for="edit-user-licencia">¿Cuenta con Licencia Vigente?</label>
               <select id="edit-user-licencia">
                 <option value="Si">Sí</option>
                 <option value="No">No</option>
               </select>
-              </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%">
-              Guardar Cambios
-            </button>
+            </div>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary btn-full">
+                  Guardar Cambios
+                </button>
+            </div>
           </form>
         </div>
       </div>
@@ -483,13 +486,15 @@
           <h2>Editar Camión</h2>
           <form id="form-edit-camion">
             <input type="hidden" id="edit-camion-id" />
-            <div class="form-group">
-              <label for="edit-camion-placa">Placa</label>
-              <input type="text" id="edit-camion-placa" required />
-            </div>
-            <div class="form-group">
-              <label for="edit-camion-unidad">Número de Unidad</label>
-              <input type="text" id="edit-camion-unidad" required />
+            <div class="form-grid">
+                <div class="form-group">
+                  <label for="edit-camion-placa">Placa</label>
+                  <input type="text" id="edit-camion-placa" required />
+                </div>
+                <div class="form-group">
+                  <label for="edit-camion-unidad">Número de Unidad</label>
+                  <input type="text" id="edit-camion-unidad" required />
+                </div>
             </div>
             <div class="form-group">
               <label for="edit-camion-modelo">Modelo</label>
@@ -509,9 +514,12 @@
                 <option value="">-- Sin Ruta --</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%">
-              Guardar Cambios
-            </button>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary btn-full">
+                  Guardar Cambios
+                </button>
+            </div>
           </form>
         </div>
       </div>
@@ -537,9 +545,12 @@
                 <option value="false">Inactiva</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%">
-              Guardar Cambios
-            </button>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary btn-full">
+                  Guardar Cambios
+                </button>
+            </div>
           </form>
         </div>
       </div>
@@ -552,28 +563,31 @@
           <form id="form-editar-horario">
             <input type="hidden" id="edit-horario-id" />
             <input type="hidden" id="edit-salida-id" />
+            
             <div class="form-group">
               <label>Ruta Asignada</label>
               <select id="edit-horario-ruta" required></select>
             </div>
-            <div class="form-group">
-              <label>Día</label>
-              <select id="edit-horario-dia" required>
-                <option value="lunes">Lunes</option>
-                <option value="martes">Martes</option>
-                <option value="miercoles">Miércoles</option>
-                <option value="jueves">Jueves</option>
-                <option value="viernes">Viernes</option>
-                <option value="sabado">Sábado</option>
-                <option value="domingo">Domingo</option>
-              </select>
-            </div>
+            
             <div class="form-grid">
-              <div class="form-group">
-                <label>Hora de Salida</label>
-                <input type="time" id="edit-horario-salida" required />
-              </div>
+                <div class="form-group">
+                  <label>Día</label>
+                  <select id="edit-horario-dia" required>
+                    <option value="lunes">Lunes</option>
+                    <option value="martes">Martes</option>
+                    <option value="miercoles">Miércoles</option>
+                    <option value="jueves">Jueves</option>
+                    <option value="viernes">Viernes</option>
+                    <option value="sabado">Sábado</option>
+                    <option value="domingo">Domingo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                    <label>Hora de Salida</label>
+                    <input type="time" id="edit-horario-salida" required />
+                </div>
             </div>
+
             <div class="form-group">
               <label>Camión Asignado</label>
               <select id="edit-horario-camion">
@@ -586,10 +600,14 @@
                 <option value="">-- Sin Asignar --</option>
               </select>
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px">
-              <button type="submit" class="btn btn-primary" style="flex: 1">
-                <i class="fas fa-save"></i> Guardar Cambios
-              </button>
+
+            <div class="modal-actions">
+                <button type="button" id="btn-delete-from-modal" class="btn btn-danger btn-shrink">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+                <button type="submit" class="btn btn-primary btn-grow">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
             </div>
           </form>
         </div>
@@ -597,82 +615,51 @@
 
       <div id="edit-ruta-mapa-modal" class="fullscreen-overlay">
         <div class="fullscreen-header">
-          <div class="header-left">
-            <h2><i class="fas fa-map-marked-alt"></i> Editor de Trazado</h2>
-            <p>Define el camino exacto que seguirá el camión.</p>
-          </div>
-          <button class="btn-close-fs close-button">
-            <i class="fas fa-times"></i> Cerrar Editor
-          </button>
-        </div>
-        <div class="fullscreen-content">
-          <div class="reference-search-box">
-            <div class="input-group autocomplete-wrapper">
-              <i class="fas fa-map-marker-alt" style="color: #2ecc71"></i>
-              <input
-                type="text"
-                id="ref-origin"
-                placeholder="Buscar Origen..."
-                autocomplete="off"
-              />
-              <ul id="list-origin" class="suggestions-list"></ul>
+            <div class="header-left">
+              <h2><i class="fas fa-map-marked-alt"></i> Editor de Trazado</h2>
+              <p>Define el camino exacto que seguirá el camión.</p>
             </div>
-            <div class="input-group autocomplete-wrapper">
-              <i class="fas fa-flag-checkered" style="color: #e74c3c"></i>
-              <input
-                type="text"
-                id="ref-destination"
-                placeholder="Buscar Destino..."
-                autocomplete="off"
-              />
-              <ul id="list-destination" class="suggestions-list"></ul>
-            </div>
-            <button
-              type="button"
-              id="btn-clear-refs"
-              class="btn-clear"
-              title="Limpiar mapa"
-            >
-              <i class="fas fa-eraser"></i> Limpiar
+            <button class="btn-close-fs close-button">
+              <i class="fas fa-times"></i> Cerrar Editor
             </button>
           </div>
-          <div id="ruta-map-editor"></div>
-          <form id="form-edit-ruta-mapa" class="footer-controls">
-            <input type="hidden" id="edit-ruta-mapa-id" />
-            <div class="footer-list">
-              <label
-                style="
-                  color: #aaa;
-                  font-size: 0.8rem;
-                  display: block;
-                  margin-bottom: 5px;
-                "
-              >
-                Secuencia de Puntos (Clic en mapa para agregar):
-              </label>
-              <ul
-                id="lista-paradas"
-                class="lista-scroll"
-                style="margin: 0; list-style: none; padding: 0"
-              >
-                <li><small>No hay puntos trazados aún.</small></li>
-              </ul>
-            </div>
-            <div class="footer-actions">
-              <button
-                type="submit"
-                class="btn btn-primary"
-                style="width: 100%; height: 100%"
-              >
-                <i class="fas fa-save"></i> GUARDAR RUTA
-              </button>
-            </div>
-          </form>
-        </div>
+          <div class="fullscreen-content">
+             <div class="reference-search-box">
+                <div class="input-group autocomplete-wrapper">
+                  <i class="fas fa-map-marker-alt" style="color: #2ecc71"></i>
+                  <input type="text" id="ref-origin" placeholder="Buscar Origen..." autocomplete="off" />
+                  <ul id="list-origin" class="suggestions-list"></ul>
+                </div>
+                <div class="input-group autocomplete-wrapper">
+                  <i class="fas fa-flag-checkered" style="color: #e74c3c"></i>
+                  <input type="text" id="ref-destination" placeholder="Buscar Destino..." autocomplete="off" />
+                  <ul id="list-destination" class="suggestions-list"></ul>
+                </div>
+                <button type="button" id="btn-clear-refs" class="btn-clear" title="Limpiar mapa">
+                  <i class="fas fa-eraser"></i> Limpiar
+                </button>
+              </div>
+              <div id="ruta-map-editor"></div>
+              <form id="form-edit-ruta-mapa" class="footer-controls">
+                <input type="hidden" id="edit-ruta-mapa-id" />
+                <div class="footer-list">
+                  <label style="color: #aaa; font-size: 0.8rem; display: block; margin-bottom: 5px;">
+                    Secuencia de Puntos (Clic en mapa para agregar):
+                  </label>
+                  <ul id="lista-paradas" class="lista-scroll" style="margin: 0; list-style: none; padding: 0">
+                    <li><small>No hay puntos trazados aún.</small></li>
+                  </ul>
+                </div>
+                <div class="footer-actions">
+                  <button type="submit" class="btn btn-primary" style="width: 100%; height: 100%">
+                    <i class="fas fa-save"></i> GUARDAR RUTA
+                  </button>
+                </div>
+              </form>
+          </div>
       </div>
-    </div>
 
-    <div id="search-usuario-modal" class="modal">
+      <div id="search-usuario-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2><i class="fas fa-search"></i> Buscar Usuario</h2>
@@ -705,9 +692,10 @@
                         </select>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
-                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
                 </div>
             </form>
         </div>
@@ -735,9 +723,10 @@
                         <option value="inactivo">Inactivo</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
-                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
                 </div>
             </form>
         </div>
@@ -760,9 +749,10 @@
                         <option value="false">Inactiva</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
-                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
                 </div>
             </form>
         </div>
@@ -794,9 +784,10 @@
                     <label>Conductor</label>
                     <input type="text" id="search-horario-conductor" placeholder="Nombre conductor...">
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
-                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
                 </div>
             </form>
         </div>
@@ -815,9 +806,10 @@
                     <label>Tipo de Alerta</label>
                     <input type="text" id="search-alerta-tipo" placeholder="Ej. Retraso, Accidente...">
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Buscar</button>
-                    <button type="button" class="btn btn-secondary btn-reset-search" style="flex: 0.5;">Limpiar</button>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
                 </div>
             </form>
         </div>

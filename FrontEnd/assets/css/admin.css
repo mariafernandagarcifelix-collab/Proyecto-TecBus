@@ -34,7 +34,7 @@
 }
 
 .logo-area {
-  padding: 25px 20px;
+  padding: 15px 20px;
   text-align: center;
   border-bottom: 1px solid var(--color-secundario);
 }
@@ -55,7 +55,7 @@
 
 .main-nav {
   flex-grow: 1;
-  padding: 20px 0;
+  padding: 10px 0;
 }
 .nav-item {
   display: flex;
@@ -92,7 +92,7 @@
     border-top: 1px solid #333; /* Línea separadora sutil */
     margin-top: auto; /* Empujar al fondo del sidebar */
     background-color: rgba(0,0,0,0.2); /* Fondo ligeramente más oscuro */
-    padding-top: 30px;
+    padding-top: 10px;
 }
 
 /* Estilo base del botón rojo */
@@ -460,8 +460,8 @@
 @media (min-width: 992px) {
   /* --- BARRA LATERAL (Visible en Desktop) --- */
   .sidebar {
-    position: static; /* Vuelve a ser parte del flujo */
-    height: auto;
+    position: sticky; /* Vuelve a ser parte del flujo */
+    height: 100vh;
     transform: translateX(0);
   }
   .menu-toggle {
@@ -990,3 +990,71 @@
 /* Scrollbar bonito para la lista */
 .suggestions-list::-webkit-scrollbar { width: 6px; }
 .suggestions-list::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
+
+/* ... (Todo tu CSS anterior) ... */
+
+/* ==================================================
+   8. NUEVO: Estandarización de Modales y Botones
+   ================================================== */
+
+/* Asegura que todos los inputs y selects tengan la misma altura y espaciado */
+.form-group {
+    margin-bottom: 20px; /* Espacio estándar entre cada campo */
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-group input,
+.form-group select {
+    height: 48px; /* Altura fija para uniformidad */
+    padding: 10px 15px;
+    border-radius: 8px;
+    background-color: #2a2a2a;
+    border: 1px solid var(--color-secundario);
+    color: var(--color-texto-claro);
+    width: 100%;
+    box-sizing: border-box; /* Asegura que el padding no rompa el ancho */
+}
+
+/* Eliminar el margen inferior del último grid para que no se sume al del botón */
+.form-grid {
+    margin-bottom: 0; 
+}
+
+/* --- CLASE NUEVA: Contenedor de Botones del Modal --- */
+.modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;          /* Espacio entre botones (Buscar y Limpiar) */
+    margin-top: 30px;   /* Espacio equitativo entre el último input y los botones */
+    width: 100%;
+}
+
+/* Botones dentro del modal */
+.modal-actions .btn {
+    height: 48px;       /* Misma altura que los inputs */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Para que el botón principal ocupe más espacio si hay dos */
+.btn-grow {
+    flex: 2;
+}
+
+/* Para el botón secundario (Limpiar) */
+.btn-shrink {
+    flex: 1;
+}
+
+/* Para cuando hay un solo botón (Guardar) */
+.btn-full {
+    width: 100%;
+}
