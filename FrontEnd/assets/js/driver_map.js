@@ -421,11 +421,20 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("perfil-email").textContent =
       user.email || "Sin correo";
     document.getElementById("perfil-id").textContent =
-      (user._id || user.id || "N/A").substring(0, 10) + "...";
+      (user._id || user.id || "N/A");
 
-    const licencia = user.conductor ? user.conductor.licencia : "No registrada";
+    // --- MODIFICACIÓN INICIO ---
+    // Verificamos si existe datos de conductor y si hay algo en 'licencia'
+    let textoLicencia = "No registrada";
+    
+    if (user.conductor && user.conductor.licencia) {
+        // Si hay una licencia (o pusiste "Si"), mostramos "Registrada"
+        textoLicencia = "Registrada";
+    }
+
     const elLicencia = document.getElementById("perfil-licencia");
-    if (elLicencia) elLicencia.textContent = licencia;
+    if (elLicencia) elLicencia.textContent = textoLicencia;
+    // --- MODIFICACIÓN FIN ---
 
     modalPerfil.classList.add("modal-visible");
   }
@@ -685,6 +694,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const incidentModal = document.getElementById("incident-modal");
   const btnMainReporte = document.getElementById("btn-reporte-incidente");
   const btnSendIncident = document.getElementById("send-incident");
+
+  const btnCloseIncident = incidentModal.querySelector(".close-button");
+  if (btnCloseIncident) {
+    btnCloseIncident.onclick = () => incidentModal.classList.remove("modal-visible");
+  }
 
   if (btnMainReporte) {
     btnMainReporte.onclick = () => incidentModal.classList.add("modal-visible");

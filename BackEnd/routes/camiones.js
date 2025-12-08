@@ -18,7 +18,8 @@ router.put("/update-location", async (req, res) => {
       `📡 Datos recibidos del ESP32 -> ID: ${busId}, Lat: ${lat}, Lng: ${lng}`
     );
 
-    // 1. Actualizar camión
+    // 1. PRIMERO: Guardar en la Base de Datos
+    // Usamos { new: true } para que la variable 'camion' contenga el documento YA actualizado
     const camion = await Camion.findOneAndUpdate(
       { numeroUnidad: busId },
       {
@@ -27,7 +28,7 @@ router.put("/update-location", async (req, res) => {
         ultimaActualizacion: new Date(),
         estado: "activo",
       },
-      { new: true }
+      { new: true } 
     ).populate("rutaAsignada");
 
     if (!camion) {
@@ -37,14 +38,22 @@ router.put("/update-location", async (req, res) => {
         .json({ message: "Camión no encontrado con ese ID" });
     }
 
-    // 2. Enviar actualización por Socket.IO
+    // 2. SEGUNDO: Emitir AL MAPA usando SOLO datos de la Base de Datos
+    // Ahora extraemos las coordenadas del objeto 'camion' que viene de MongoDB
+    // Nota: En GeoJSON, coordinates es [longitud, latitud]
+    const dbLng = camion.ubicacionActual.coordinates[0];
+    const dbLat = camion.ubicacionActual.coordinates[1];
+    const dbSpeed = camion.velocidad;
+
     const io = req.app.get("io");
     if (io) {
+      console.log("✅ Enviando al mapa datos confirmados de BD");
       io.emit("locationUpdate", {
         camionId: camion._id,
         numeroUnidad: camion.numeroUnidad,
-        location: { lat, lng },
-        velocidad: speed,
+        // Aquí está la corrección: enviamos lo que la BD tiene guardado
+        location: { lat: dbLat, lng: dbLng }, 
+        velocidad: dbSpeed,
       });
     }
 

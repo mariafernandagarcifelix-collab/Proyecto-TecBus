@@ -303,7 +303,7 @@ ul { list-style: none; }
     /* Hero Text */
     .hero-content { grid-template-columns: 1fr; text-align: center; gap: 40px; }
     .hero-text h1 { font-size: 2.5rem; } /* Título más pequeño */
-    .hero-image { order: -1; margin-bottom: 20px; }
+    .hero-image { margin-bottom: 20px; }
     .cta-group { justify-content: center; }
     .trust-badges { justify-content: center; }
     

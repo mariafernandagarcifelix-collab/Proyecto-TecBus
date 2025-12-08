@@ -80,13 +80,26 @@ router.post('/login', async (req, res) => {
         );
 
         // 4. Enviar el token al frontend
+        // res.json({
+        //     token: token,
+        //     user: {
+        //         id: user._id,
+        //         nombre: user.nombre,
+        //         email: user.email,
+        //         tipo: user.tipo
+        //     }
+        // });
         res.json({
             token: token,
             user: {
                 id: user._id,
                 nombre: user.nombre,
                 email: user.email,
-                tipo: user.tipo
+                tipo: user.tipo,
+                // 👇 ESTO ES LO NUEVO: Enviamos los datos específicos del rol
+                conductor: user.conductor,
+                estudiante: user.estudiante,
+                administrador: user.administrador
             }
         });
 

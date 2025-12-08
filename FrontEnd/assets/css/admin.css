@@ -864,17 +864,29 @@
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  max-height: 200px;
+  max-height: 500px;
 }
 
 .footer-list {
   flex-grow: 1;
-  max-height: 200px; /* Altura fija para la lista scrollable */
+  max-height: 100%; /* Altura fija para la lista scrollable */
   overflow-y: auto;
   border: 1px solid #333;
   border-radius: 6px;
   padding: 5px;
   background: #111;
+}
+
+.lista-scroll {
+    /* ANTES: 80px o 120px -> AHORA: 300px */
+    max-height: 600px; 
+    overflow-y: auto;
+    background: #111;
+    padding: 10px;
+    border-radius: 8px;
+    border: none; /* Quitamos borde interno redundante */
+    list-style: none;
+    margin-bottom: 0; /* Quitamos margen extra abajo */
 }
 
 .footer-actions {
@@ -1057,4 +1069,117 @@
 /* Para cuando hay un solo botón (Guardar) */
 .btn-full {
     width: 100%;
+}
+
+/* ... (Todo tu CSS anterior) ... */
+
+/* ==================================================
+   9. NUEVO: Estilos para el Editor de Trazado
+   ================================================== */
+
+.editor-mode-switch {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 15px;
+    background-color: #2a2a2a;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #444;
+}
+
+.btn-mode {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    background-color: #111;
+    color: #aaa;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+}
+
+.btn-mode i {
+    font-size: 1.1rem;
+}
+
+.btn-mode:hover {
+    color: white;
+    background-color: #333;
+}
+
+.btn-mode.active {
+    background-color: var(--color-primario);
+    color: white;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.4);
+}
+
+/* Modo Activo: Trazado (Azul) */
+.btn-mode.active#btn-mode-tracing {
+    background-color: var(--color-primario); /* Azul */
+    color: white;
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.4);
+}
+
+/* Modo Activo: Paradas (Amarillo/Naranja) */
+.btn-mode.active#btn-mode-stops {
+    background-color: #ffc107; /* Amarillo */
+    color: #000;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
+}
+
+/* Icono de parada para el mapa */
+ .stop-icon-marker {
+    background-color: #ffc107; 
+    border-radius: 50%;
+    border: 2px solid white;
+    color: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+/*.waypoint-icon-marker {
+    background-color: #007bff;
+    border-radius: 50%;
+    border: 2px solid white;
+    opacity: 0.8;
+} */
+
+.dot-marker {
+    background-color: #007bff;
+    border-radius: 50%;
+    border: 1px solid white;
+    width: 10px;
+    height: 10px;
+}
+
+/* Icono para la Parada (Grande y Visible) */
+.parada-marker {
+    background-color: #ffc107; /* Amarillo de bus escolar/señal */
+    color: black;
+    border-radius: 5px; /* Cuadrado redondeado tipo señal */
+    border: 2px solid white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    /* Triangulito abajo para simular pin */
+}
+.parada-marker::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px 6px 0;
+    border-style: solid;
+    border-color: #ffc107 transparent transparent transparent;
 }
