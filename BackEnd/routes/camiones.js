@@ -14,46 +14,39 @@ router.put("/update-location", async (req, res) => {
   try {
     const { busId, lat, lng, speed } = req.body;
 
-    console.log(
-      `📡 Datos recibidos del ESP32 -> ID: ${busId}, Lat: ${lat}, Lng: ${lng}`
-    );
-
-    // 1. PRIMERO: Guardar en la Base de Datos
-    // Usamos { new: true } para que la variable 'camion' contenga el documento YA actualizado
+    // 1. GUARDAR EN BD PRIMERO
     const camion = await Camion.findOneAndUpdate(
       { numeroUnidad: busId },
       {
-        ubicacionActual: { type: "Point", coordinates: [lng, lat] },
+        ubicacionActual: { type: "Point", coordinates: [lng, lat] }, // Mongo usa [Longitud, Latitud]
         velocidad: speed,
         ultimaActualizacion: new Date(),
         estado: "activo",
       },
-      { new: true } 
+      { new: true } // Esto es vital: nos devuelve el dato YA GUARDADO
     ).populate("rutaAsignada");
 
     if (!camion) {
-      console.log("⚠️ Camión no encontrado en la DB");
-      return res
-        .status(404)
-        .json({ message: "Camión no encontrado con ese ID" });
+      return res.status(404).json({ message: "Camión no encontrado" });
     }
 
-    // 2. SEGUNDO: Emitir AL MAPA usando SOLO datos de la Base de Datos
-    // Ahora extraemos las coordenadas del objeto 'camion' que viene de MongoDB
-    // Nota: En GeoJSON, coordinates es [longitud, latitud]
-    const dbLng = camion.ubicacionActual.coordinates[0];
-    const dbLat = camion.ubicacionActual.coordinates[1];
-    const dbSpeed = camion.velocidad;
+    // 2. EXTRAER DATOS REALES DE LA BD
+    // Si la BD guardó algo diferente o redondeó, esto es lo que veremos.
+    const coordenadasReales = camion.ubicacionActual.coordinates;
+    const latitudBD = coordenadasReales[1]; // En GeoJSON el índice 1 es latitud
+    const longitudBD = coordenadasReales[0]; // En GeoJSON el índice 0 es longitud
 
+    // 3. ENVIAR AL MAPA (Usando datos de BD)
     const io = req.app.get("io");
     if (io) {
-      console.log("✅ Enviando al mapa datos confirmados de BD");
       io.emit("locationUpdate", {
         camionId: camion._id,
         numeroUnidad: camion.numeroUnidad,
-        // Aquí está la corrección: enviamos lo que la BD tiene guardado
-        location: { lat: dbLat, lng: dbLng }, 
-        velocidad: dbSpeed,
+        location: { 
+            lat: latitudBD, 
+            lng: longitudBD 
+        },
+        velocidad: camion.velocidad, // Usamos la velocidad guardada
       });
     }
 

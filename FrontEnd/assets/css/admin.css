@@ -855,7 +855,7 @@
 
 /* BARRA INFERIOR (Lista de paradas + Botón Guardar) */
 .footer-controls {
-  flex-shrink: 0; /* No encoger */
+  flex-shrink: 0; 
   margin-top: 15px;
   background-color: #1e1e1e;
   padding: 15px;
@@ -864,29 +864,34 @@
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  max-height: 500px;
+  /* CAMBIO: Aumentamos el max-height o lo quitamos para que crezca según la lista */
+  max-height: 45vh; /* Permitir que ocupe hasta el 45% de la altura de pantalla */
+  min-height: 250px; /* Asegurar una altura mínima */
 }
 
 .footer-list {
   flex-grow: 1;
-  max-height: 100%; /* Altura fija para la lista scrollable */
-  overflow-y: auto;
+  height: 100%; /* Que ocupe toda la altura del padre */
+  overflow-y: hidden; /* El scroll lo maneja la lista interna */
   border: 1px solid #333;
   border-radius: 6px;
   padding: 5px;
   background: #111;
+  display: flex;        /* Flex para que la lista interna se expanda */
+  flex-direction: column;
 }
 
 .lista-scroll {
-    /* ANTES: 80px o 120px -> AHORA: 300px */
-    max-height: 600px; 
-    overflow-y: auto;
+    /* CAMBIO: Usamos height: 100% para llenar el espacio del footer */
+    height: 100%;       
+    max-height: none;   /* Quitamos el límite fijo de px */
+    overflow-y: auto;   /* Scroll aquí */
     background: #111;
     padding: 10px;
     border-radius: 8px;
-    border: none; /* Quitamos borde interno redundante */
+    border: none;
     list-style: none;
-    margin-bottom: 0; /* Quitamos margen extra abajo */
+    margin-bottom: 0;
 }
 
 .footer-actions {

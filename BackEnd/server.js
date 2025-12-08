@@ -68,26 +68,19 @@ io.on("connection", (socket) => {
   console.log(`🔌 Nuevo cliente conectado: ${socket.id}`);
 
   // --- A. Actualización de Ubicación (Conductor -> Mapa) ---
-  // --- A. Actualización de Ubicación (Conductor -> Mapa) ---
   socket.on("driverLocationUpdate", async (data) => {
-    // console.log("📍 Recibiendo coordenadas:", data.camionId); // Descomenta para depurar
-
     try {
       let idParaActualizar = null;
 
-      // 1. ¿Es un ID válido de MongoDB?
       if (mongoose.Types.ObjectId.isValid(data.camionId)) {
         idParaActualizar = data.camionId;
       } else {
-        // 2. Si no, buscamos el camión por su número (ej: "TEC-01")
         const camionEncontrado = await Camion.findOne({ numeroUnidad: data.camionId });
-        if (camionEncontrado) {
-          idParaActualizar = camionEncontrado._id;
-        }
+        if (camionEncontrado) idParaActualizar = camionEncontrado._id;
       }
 
       if (idParaActualizar) {
-        // 3. Actualizamos la base de datos
+        // 1. GUARDAR EN BD
         const camion = await Camion.findByIdAndUpdate(
           idParaActualizar,
           {
@@ -96,24 +89,30 @@ io.on("connection", (socket) => {
               coordinates: [data.location.lng, data.location.lat],
             },
             ultimaActualizacion: Date.now(),
-            estado: "activo" // Forzamos estado activo al moverse
+            estado: "activo"
           },
-          { new: true }
+          { new: true } // Importante: devuelve el documento actualizado
         );
 
-        // 4. Rebotamos la señal a los estudiantes/admin
-        if (camion) {
+        // 2. ENVIAR AL MAPA (Solo si se guardó)
+        if (camion && camion.ubicacionActual && camion.ubicacionActual.coordinates) {
+          
+          // Extraemos coordenadas EXCLUSIVAMENTE de la base de datos
+          const [lngBD, latBD] = camion.ubicacionActual.coordinates;
+
           io.emit("locationUpdate", {
             camionId: camion._id,
             numeroUnidad: camion.numeroUnidad,
-            location: data.location,
-            heading: data.heading || 0 // Por si agregas rotación en el futuro
+            location: { 
+                lat: latBD, 
+                lng: lngBD 
+            },
+            heading: data.heading || 0
           });
+          
+          console.log(`📡 Ubicación actualizada desde BD para ${camion.numeroUnidad}: [${latBD}, ${lngBD}]`);
         }
-      } else {
-        console.warn(`⚠️ Ignorando ubicación: Camión no identificado (${data.camionId})`);
       }
-
     } catch (error) {
       console.error("❌ Error actualizando ubicación:", error.message);
     }

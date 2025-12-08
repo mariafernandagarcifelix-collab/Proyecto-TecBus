@@ -1830,6 +1830,12 @@ document.addEventListener("DOMContentLoaded", () => {
   window.openEditRutaMapaModal = (ruta) => {
     modalRutaMapa.classList.add("modal-visible");
     document.getElementById("edit-ruta-mapa-id").value = ruta._id;
+
+    // --- NUEVO: Poner el nombre de la ruta en el título ---
+    const tituloSpan = document.getElementById("nombre-ruta-editor");
+    if (tituloSpan) {
+        tituloSpan.textContent = ruta.nombre;
+    }
     
     const allPoints = ruta.paradas || [];
     arrayPuntosTrazado = [];
