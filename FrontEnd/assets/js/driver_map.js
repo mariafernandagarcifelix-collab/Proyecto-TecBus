@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Variables de Estado
   let MI_CAMION_ID = null;
+  let MI_RUTA_NOMBRE = "";
   let MIS_VIAJES_HOY = []; // Lista de todos los viajes del día ordenados
   let INDICE_VIAJE_ACTUAL = -1; // En qué viaje voy (0, 1, 2...)
 
@@ -620,37 +621,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function actualizarEstadoConductor() {
     try {
-      // Referencia al mensajito de "En Ruta"
       const statusMsgBox = document.querySelector(".students-count");
-
-      // 1. Obtener datos del camión asignado
+      // 1. Obtener Camión
       const resCamion = await fetch(BACKEND_URL + "/api/users/mi-camion", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      // MANEJO DE ERROR SI LA API FALLA
+      if (!resCamion.ok) {
+         console.warn("⚠️ Falló petición camión");
+         statusDisplay.textContent = "⚠️ Error Conexión";
+         statusDisplay.style.color = "var(--color-error)";
+         return; 
+      }
+
       const dataCamion = await resCamion.json();
 
-      // UI Header
       let textoCamion = "Sin Unidad";
       let unidad = null;
-      if (resCamion.ok && dataCamion.camionId) {
+      
+      if (dataCamion.camionId) {
         MI_CAMION_ID = dataCamion.camionId;
         unidad = dataCamion.numeroUnidad;
         textoCamion = `Unidad ${unidad}` + (dataCamion.placa ? ` (${dataCamion.placa})` : "");
       } else {
         MI_CAMION_ID = null;
       }
+      
       if (headerDisplay) headerDisplay.textContent = textoCamion;
       if (busDisplay) busDisplay.textContent = textoCamion;
 
-      // Si no tiene camión, forzamos estado inactivo
       if (!MI_CAMION_ID) {
         routeDisplay.textContent = "--";
         statusDisplay.textContent = "● Sin Asignación";
         statusDisplay.style.color = "gray";
-        
-        // 👇 ACTUALIZACIÓN UI
         if(statusMsgBox) statusMsgBox.innerHTML = '<i class="fas fa-user-slash"></i> Sin Asignación';
-        
         gestionarEstadoBD("Inactivo");
         return;
       }
@@ -659,107 +664,151 @@ document.addEventListener("DOMContentLoaded", () => {
       const resHorarios = await fetch(BACKEND_URL + "/api/horarios", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!resHorarios.ok) return;
+      
+      // MANEJO DE ERROR SI LA API FALLA
+      if (!resHorarios.ok) {
+          console.warn("⚠️ Falló petición horarios");
+          routeDisplay.textContent = "--";
+          statusDisplay.textContent = "⚠️ Error de Datos";
+          statusDisplay.style.color = "var(--color-error)";
+          return;
+      }
+
       const todosHorarios = await resHorarios.json();
 
-      // Filtrar horarios de HOY
-      const hoyRaw = obtenerDiaSemana();
-      const mapaDiasBackend = { lunes: "Lunes", martes: "Martes", miercoles: "Miércoles", jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo" };
-      const hoyFormatted = mapaDiasBackend[hoyRaw];
+      // 3. Filtrar SOLO horarios de HOY
+      const diasArr = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+      const hoyIndex = new Date().getDay();
+      
+      const mapaDiasBackend = { 
+          lunes: "Lunes", martes: "Martes", miercoles: "Miércoles", 
+          jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo" 
+      };
 
-      const misSalidasHoy = todosHorarios.filter((h) => {
-        const esHoy = h.diaSemana === hoyFormatted;
-        const conductorEsYo = h.infoConductor && h.infoConductor[0] && h.infoConductor[0]._id === (user._id || user.id);
-        const camionEsMio = String(h.camionUnidad) === String(unidad);
-        const nombreCoincide = h.conductorNombre === user.nombre; 
-        return esHoy && (conductorEsYo || camionEsMio || nombreCoincide);
+      const hoyFormatted = mapaDiasBackend[diasArr[hoyIndex]];
+
+      const salidasHoy = todosHorarios.filter(h => {
+          const esDia = h.diaSemana === hoyFormatted;
+          // Verificación segura:
+          const infoCond = h.infoConductor && h.infoConductor[0];
+          const soyYo = infoCond && infoCond._id === (user._id || user.id);
+          const esMiCamion = String(h.camionUnidad) === String(unidad);
+          const nombreCoincide = h.conductorNombre === user.nombre; 
+          
+          return esDia && (soyYo || esMiCamion || nombreCoincide);
       });
 
-      // Ordenar cronológicamente
-      misSalidasHoy.sort((a, b) => horaAEntero(a.hora) - horaAEntero(b.hora));
+      // Ordenar por hora
+      salidasHoy.sort((a, b) => horaAEntero(a.hora) - horaAEntero(b.hora));
 
-      // 3. LÓGICA DE TIEMPO INTELIGENTE
+      // 4. LÓGICA DE ESTADO
       const now = new Date();
       const minutosActuales = now.getHours() * 60 + now.getMinutes();
-      
+
       let viajeActivo = null;
       let viajeSiguiente = null;
       let estadoActual = "Fuera de Servicio";
+      let esPreparacion = false;
 
-      for (let i = 0; i < misSalidasHoy.length; i++) {
-        const viaje = misSalidasHoy[i];
-        const inicio = horaAEntero(viaje.hora);
-        const duracion = viaje.rutaDuracion || 45; 
-        const fin = inicio + duracion;
+      for (let i = 0; i < salidasHoy.length; i++) {
+          const viaje = salidasHoy[i];
+          const inicio = horaAEntero(viaje.hora);
+          const duracion = viaje.rutaDuracion || 45;
+          const fin = inicio + duracion;
 
-        if (minutosActuales >= (inicio - 10) && minutosActuales <= fin) {
-          viajeActivo = viaje;
-          viajeActivo.horaFin = minutosAHora(fin);
-          break; 
-        }
-        if (minutosActuales < inicio && !viajeSiguiente) {
-            viajeSiguiente = viaje;
-        }
+          // A. ¿Estamos en los 10 mins de PREPARACIÓN?
+          if (minutosActuales >= (inicio - 10) && minutosActuales < inicio) {
+              viajeActivo = viaje;
+              viajeActivo.horaFin = minutosAHora(fin);
+              esPreparacion = true; 
+              break; 
+          }
+
+          // B. ¿Estamos EN RUTA?
+          if (minutosActuales >= inicio && minutosActuales <= fin) {
+              viajeActivo = viaje;
+              viajeActivo.horaFin = minutosAHora(fin);
+              break; 
+          }
+
+          // C. Buscar el SIGUIENTE viaje
+          if (minutosActuales < inicio && !viajeSiguiente) {
+              viajeSiguiente = viaje;
+          }
       }
 
-      // 4. ACTUALIZAR INTERFAZ Y BASE DE DATOS
+      // 5. ACTUALIZAR PANTALLA
       if (viajeActivo) {
-        // --- CASO: EN SERVICIO ---
-        estadoActual = "En Servicio";
-        routeDisplay.textContent = viajeActivo.rutaNombre;
-        
-        statusDisplay.innerHTML = `● En Ruta (Llegada est: ${viajeActivo.horaFin})`;
-        statusDisplay.className = "status-indicator status-on";
-        statusDisplay.style.color = "var(--color-exito)";
+          routeDisplay.textContent = viajeActivo.rutaNombre;
+          iniciarGeolocalizacion(); 
 
-        // 👇 ACTUALIZACIÓN UI: Ícono de carretera/bus
-        if(statusMsgBox) {
-            statusMsgBox.innerHTML = '<i class="fas fa-road"></i> En Ruta';
-            statusMsgBox.style.color = 'var(--color-exito)'; // Ponerlo verdecito
-        }
+          // Si cambió la ruta, cargar trazado
+          if(MI_RUTA_NOMBRE !== viajeActivo.rutaNombre) {
+              MI_RUTA_NOMBRE = viajeActivo.rutaNombre;
+              cargarRutaActiva(viajeActivo); 
+          }
 
-        iniciarGeolocalizacion();
+          if (esPreparacion) {
+              // --- CASO: PREPARANDO ---
+              estadoActual = "Inicio de Recorridos"; 
+              statusDisplay.innerHTML = `● Preparando Salida (${viajeActivo.hora})`;
+              statusDisplay.className = "status-indicator status-on";
+              statusDisplay.style.color = "var(--color-warning)"; 
 
-        if(MI_RUTA_NOMBRE !== viajeActivo.rutaNombre) {
-            MI_RUTA_NOMBRE = viajeActivo.rutaNombre;
-            cargarRutaActiva(viajeActivo); 
-        }
+              if(statusMsgBox) {
+                  statusMsgBox.innerHTML = '<i class="fas fa-clock"></i> Abordando';
+                  statusMsgBox.style.color = 'var(--color-warning)';
+              }
+
+          } else {
+              // --- CASO: EN SERVICIO ---
+              estadoActual = "En Servicio";
+              statusDisplay.innerHTML = `● En Ruta (Llegada: ${viajeActivo.horaFin})`;
+              statusDisplay.className = "status-indicator status-on";
+              statusDisplay.style.color = "var(--color-exito)"; 
+
+              if(statusMsgBox) {
+                  statusMsgBox.innerHTML = '<i class="fas fa-road"></i> En Ruta';
+                  statusMsgBox.style.color = 'var(--color-exito)';
+              }
+          }
 
       } else {
-        // --- CASO: FUERA DE SERVICIO ---
-        statusDisplay.className = "status-indicator status-off";
-        statusDisplay.style.color = "var(--color-error)";
+          // --- CASO: FUERA DE SERVICIO ---
+          statusDisplay.className = "status-indicator status-off";
+          statusDisplay.style.color = "var(--color-error)";
 
-        if (viajeSiguiente) {
-            // Entre viajes o antes del primero
-            routeDisplay.textContent = "En Espera";
-            statusDisplay.innerHTML = `● Siguiente: ${viajeSiguiente.hora} (${viajeSiguiente.rutaNombre})`;
-            estadoActual = "En Espera"; 
-            
-            // 👇 ACTUALIZACIÓN UI: Ícono de reloj/café
-            if(statusMsgBox) {
-                statusMsgBox.innerHTML = '<i class="fas fa-coffee"></i> En Espera';
-                statusMsgBox.style.color = 'var(--color-warning)'; // Ponerlo amarillo
-            }
-        } else {
-            // Ya no hay más viajes
-            routeDisplay.textContent = "Jornada Finalizada";
-            statusDisplay.innerHTML = "● Fuera de Servicio";
-            estadoActual = "Fuera de Servicio";
-            
-            // 👇 ACTUALIZACIÓN UI: Ícono de prohibido/casa
-            if(statusMsgBox) {
-                statusMsgBox.innerHTML = '<i class="fas fa-ban"></i> Terminado';
-                statusMsgBox.style.color = 'var(--color-error)'; // Ponerlo rojo
-            }
-        }
+          if (viajeSiguiente) {
+              routeDisplay.textContent = "En Espera";
+              statusDisplay.innerHTML = `● Siguiente: ${viajeSiguiente.hora} (${viajeSiguiente.rutaNombre})`;
+              estadoActual = "En Espera"; 
+              
+              if(statusMsgBox) {
+                  statusMsgBox.innerHTML = '<i class="fas fa-coffee"></i> En Espera';
+                  statusMsgBox.style.color = 'gray';
+              }
+          } else {
+              routeDisplay.textContent = "Jornada Finalizada";
+              statusDisplay.innerHTML = "● Fuera de Servicio";
+              estadoActual = "Fuera de Servicio";
+              
+              if(statusMsgBox) {
+                  statusMsgBox.innerHTML = '<i class="fas fa-ban"></i> Terminado';
+                  statusMsgBox.style.color = 'var(--color-error)';
+              }
+          }
       }
 
-      // 5. SINCRONIZAR
+      // 6. ACTUALIZAR BD
       gestionarEstadoBD(estadoActual);
 
     } catch (error) {
       console.error("Error estado conductor:", error);
+      // ACTUALIZAR UI PARA QUE NO SE QUEDE EN "VERIFICANDO"
+      if(statusDisplay) {
+        statusDisplay.textContent = "Error de Sistema";
+        statusDisplay.style.color = "red";
+      }
     }
   }
 

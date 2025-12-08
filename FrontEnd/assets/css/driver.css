@@ -13,15 +13,20 @@ header {
   background-color: var(--color-superficie);
   padding: 12px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   position: relative;
   z-index: 1000;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
+  height: 70px;
 }
 .header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%); /* Esto lo centra perfectamente */
   text-align: center;
+  width: auto;
+  white-space: nowrap;
 }
 .header-title h1 {
   font-size: 1.1rem;

@@ -1754,54 +1754,57 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  // --- ACTUALIZAR LISTA LATERAL (CORREGIDA) ---
   function actualizarListaUI() {
-      if(!listaParadasUI) return;
-      listaParadasUI.innerHTML = "";
+      // Referencias a los nuevos elementos
+      const ulParadas = document.getElementById("lista-paradas-data");
+      const ulPuntos = document.getElementById("lista-puntos-data");
+      const spanCountParadas = document.getElementById("count-paradas");
+      const spanCountTrazado = document.getElementById("count-trazado");
 
-      // 1. Resumen de contadores (Lo que ya tenías)
-      listaParadasUI.innerHTML += `
-          <li style="border-bottom:1px solid #444; padding:5px; margin-bottom:5px; font-size:0.85rem; color:#aaa;">
-             <span style="color:#007bff">● Puntos Trazado: <strong>${arrayPuntosTrazado.length}</strong></span> | 
-             <span style="color:#ffc107">● Paradas: <strong>${arrayPuntosParada.length}</strong></span>
-          </li>
-      `;
+      if(!ulParadas || !ulPuntos) return;
 
-      // 2. LISTAR PARADAS (Amarillas)
-      if (arrayPuntosParada.length > 0) {
-          listaParadasUI.innerHTML += `<li style="background:#2a2a2a; color:#ffc107; padding:5px 10px; font-weight:bold; font-size:0.8rem; border-bottom:1px solid #444;">▼ PARADAS</li>`;
-          
+      // Limpiar listas
+      ulParadas.innerHTML = "";
+      ulPuntos.innerHTML = "";
+
+      // Actualizar contadores
+      if(spanCountParadas) spanCountParadas.textContent = arrayPuntosParada.length;
+      if(spanCountTrazado) spanCountTrazado.textContent = arrayPuntosTrazado.length;
+
+      // 1. RENDERIZAR PARADAS (2 Columnas vía CSS)
+      if (arrayPuntosParada.length === 0) {
+          ulParadas.innerHTML = '<li style="grid-column: 1 / -1; text-align:center; color:#666; border:none;">Sin paradas</li>';
+      } else {
           arrayPuntosParada.forEach((p, i) => {
-              listaParadasUI.innerHTML += `
-                <li style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #333; font-size:0.9rem;">
-                    <span style="color:#ddd;"><i class="fas fa-map-pin" style="color:#ffc107; margin-right:8px;"></i> ${p.nombre}</span>
-                    <i class="fas fa-trash" style="color:#ff6b6b; cursor:pointer;" title="Eliminar Parada" onclick="borrarParada(${i})"></i>
+              ulParadas.innerHTML += `
+                <li>
+                    <span title="${p.nombre}">
+                        <i class="fas fa-map-pin" style="color:#ffc107; margin-right:5px;"></i> 
+                        ${p.nombre.length > 15 ? p.nombre.substring(0,15)+'...' : p.nombre}
+                    </span>
+                    <i class="fas fa-trash" style="color:#ff6b6b;" onclick="borrarParada(${i})"></i>
                 </li>`;
           });
       }
 
-      // 3. LISTAR PUNTOS DE TRAZADO (Azules) - ¡ESTO ES LO QUE FALTABA!
-      if (arrayPuntosTrazado.length > 0) {
-          listaParadasUI.innerHTML += `<li style="background:#2a2a2a; color:#007bff; padding:5px 10px; font-weight:bold; font-size:0.8rem; border-bottom:1px solid #444; margin-top:10px;">▼ CAMINO (TRAZADO)</li>`;
-          
+      // 2. RENDERIZAR PUNTOS DE TRAZADO (2 Columnas vía CSS)
+      if (arrayPuntosTrazado.length === 0) {
+           ulPuntos.innerHTML = '<li style="grid-column: 1 / -1; text-align:center; color:#666; border:none;">Sin trazado</li>';
+      } else {
           arrayPuntosTrazado.forEach((coords, i) => {
-              // Acortamos las coordenadas para que quepan visualmente
-              // coords es un array [lat, lng]
               const latStr = coords[0].toFixed(5);
               const lngStr = coords[1].toFixed(5);
               
-              listaParadasUI.innerHTML += `
-                <li style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-bottom:1px solid #333; font-size:0.85rem; color:#aaa;">
+              ulPuntos.innerHTML += `
+                <li>
                     <span>
-                        <i class="fas fa-circle" style="font-size:0.5rem; color:#007bff; margin-right:8px;"></i> 
-                        Punto ${i + 1} <small style="color:#666;">[${latStr}, ${lngStr}]</small>
+                        <i class="fas fa-circle" style="font-size:0.4rem; color:#007bff; margin-right:5px; vertical-align:middle;"></i> 
+                        P.${i + 1} <span style="color:#888; font-size:0.75rem;">[${latStr}, ${lngStr}]</span>
                     </span>
-                    <i class="fas fa-times" style="color:#666; cursor:pointer;" onmouseover="this.style.color='red'" onmouseout="this.style.color='#666'" onclick="borrarPuntoTrazo(${i})"></i>
+                    <i class="fas fa-times" style="color:#888;" onmouseover="this.style.color='red'" onmouseout="this.style.color='#888'" onclick="borrarPuntoTrazo(${i})"></i>
                 </li>`;
           });
-      }
-
-      if(arrayPuntosTrazado.length === 0 && arrayPuntosParada.length === 0) {
-          listaParadasUI.innerHTML += "<li style='padding:15px; text-align:center; color:#666;'>Mapa vacío.<br>Selecciona un modo y haz clic en el mapa.</li>";
       }
   }
 

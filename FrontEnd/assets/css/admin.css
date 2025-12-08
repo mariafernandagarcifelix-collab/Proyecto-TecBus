@@ -854,32 +854,7 @@
 }
 
 /* BARRA INFERIOR (Lista de paradas + Botón Guardar) */
-.footer-controls {
-  flex-shrink: 0; 
-  margin-top: 15px;
-  background-color: #1e1e1e;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #333;
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  /* CAMBIO: Aumentamos el max-height o lo quitamos para que crezca según la lista */
-  max-height: 45vh; /* Permitir que ocupe hasta el 45% de la altura de pantalla */
-  min-height: 250px; /* Asegurar una altura mínima */
-}
 
-.footer-list {
-  flex-grow: 1;
-  height: 100%; /* Que ocupe toda la altura del padre */
-  overflow-y: hidden; /* El scroll lo maneja la lista interna */
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 5px;
-  background: #111;
-  display: flex;        /* Flex para que la lista interna se expanda */
-  flex-direction: column;
-}
 
 .lista-scroll {
     /* CAMBIO: Usamos height: 100% para llenar el espacio del footer */
@@ -1188,3 +1163,72 @@
     border-style: solid;
     border-color: #ffc107 transparent transparent transparent;
 }
+
+/* ... estilos previos ... */
+
+/* CAMBIO: Ajustes para el contenedor de listas divididas */
+.lists-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  gap: 15px;
+  overflow: hidden; /* Evita scroll en el wrapper padre */
+}
+
+.list-column {
+  flex: 1; /* Cada sección ocupa el 50% */
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Importante para que el grid funcione dentro de flex */
+}
+
+.list-header-sticky {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  font-weight: bold;
+  color: #ddd;
+  background-color: #252525;
+  border-bottom: 2px solid #444;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
+
+/* GRID DE 2 COLUMNAS PARA LOS ÍTEMS */
+.grid-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2 Columnas exactas */
+  gap: 8px;
+  overflow-y: auto; /* Scroll individual por lista */
+  padding: 5px;
+  list-style: none;
+  margin: 0;
+  align-content: start; /* Evita que se estiren si hay pocos */
+}
+
+.grid-list li {
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.grid-list li:hover {
+  background-color: #333;
+  border-color: #555;
+}
+
+.grid-list li i.fa-trash, 
+.grid-list li i.fa-times {
+  padding: 5px;
+  cursor: pointer;
+}
+
+/* Scrollbar estilizado para las listas */
+.grid-list::-webkit-scrollbar { width: 6px; }
+.grid-list::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
