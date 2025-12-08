@@ -1016,6 +1016,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const datos = {
         nombre: document.getElementById("ruta-nombre").value,
         descripcion: document.getElementById("ruta-descripcion").value,
+        tiempoEstimadoTotal: document.getElementById("ruta-tiempo").value
       };
       try {
         // CAMBIO: BACKEND_URL
@@ -1077,6 +1078,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-ruta-nombre").value = ruta.nombre;
     document.getElementById("edit-ruta-descripcion").value =
       ruta.descripcion || "";
+    document.getElementById("edit-ruta-tiempo").value = ruta.tiempoEstimadoTotal || "";
     document.getElementById("edit-ruta-activa").value = ruta.activa;
     modalRuta.classList.add("modal-visible");
   }
@@ -1091,6 +1093,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const datos = {
         nombre: document.getElementById("edit-ruta-nombre").value,
         descripcion: document.getElementById("edit-ruta-descripcion").value,
+        tiempoEstimadoTotal: document.getElementById("edit-ruta-tiempo").value,
         activa: document.getElementById("edit-ruta-activa").value === "true",
       };
       try {

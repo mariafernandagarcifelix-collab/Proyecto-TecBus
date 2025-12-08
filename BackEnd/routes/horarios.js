@@ -64,6 +64,8 @@ router.get("/", protect, async (req, res) => {
           hora: "$salidas.hora",
           rutaNombre: { $arrayElemAt: ["$infoRuta.nombre", 0] },
           rutaId: { $arrayElemAt: ["$infoRuta._id", 0] },
+          // 👇 AGREGAR ESTA LÍNEA: Traemos el tiempo estimado de la colección Rutas
+          rutaDuracion: { $arrayElemAt: ["$infoRuta.tiempoEstimadoTotal", 0] },
           camionUnidad: { $arrayElemAt: ["$infoCamion.numeroUnidad", 0] },
           conductorNombre: { $arrayElemAt: ["$infoConductor.nombre", 0] },
         },

@@ -23,7 +23,7 @@ router.post("/", protect, adminOnly, async (req, res) => {
   try {
     // Por ahora, solo creamos la ruta con nombre y descripción.
     // Las paradas se añadirán después con una UI más compleja.
-    const { nombre, descripcion } = req.body;
+    const { nombre, descripcion, tiempoEstimadoTotal } = req.body;
 
     const rutaExists = await Ruta.findOne({ nombre });
     if (rutaExists) {
@@ -35,6 +35,7 @@ router.post("/", protect, adminOnly, async (req, res) => {
     const ruta = new Ruta({
       nombre,
       descripcion,
+      tiempoEstimadoTotal,
       paradas: [], // Dejamos las paradas vacías por ahora
       activa: true,
     });
@@ -55,6 +56,7 @@ router.put("/:id", protect, adminOnly, async (req, res) => {
     if (ruta) {
       ruta.nombre = req.body.nombre || ruta.nombre;
       ruta.descripcion = req.body.descripcion || ruta.descripcion;
+      ruta.tiempoEstimadoTotal = req.body.tiempoEstimadoTotal || ruta.tiempoEstimadoTotal;
       ruta.activa =
         req.body.activa !== undefined ? req.body.activa : ruta.activa;
 

@@ -600,96 +600,187 @@ document.addEventListener("DOMContentLoaded", () => {
     return parseInt(h) * 60 + parseInt(m);
   }
 
+  // Variables globales para evitar spam al servidor
+  let ULTIMO_ESTADO_REPORTADO = ""; 
+
+  // Función auxiliar: Convertir "06:30" a minutos (390)
+  function horaAEntero(horaStr) {
+    if (!horaStr) return 0;
+    const [h, m] = horaStr.split(":");
+    return parseInt(h) * 60 + parseInt(m);
+  }
+
+  // Función auxiliar: Convertir minutos (405) a "06:45"
+  function minutosAHora(minutos) {
+    let h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    h = h % 24;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
   async function actualizarEstadoConductor() {
     try {
+      // 1. Obtener datos del camión asignado
       const resCamion = await fetch(BACKEND_URL + "/api/users/mi-camion", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       const dataCamion = await resCamion.json();
 
+      // UI Header
       let textoCamion = "Sin Unidad";
       let unidad = null;
-
       if (resCamion.ok && dataCamion.camionId) {
         MI_CAMION_ID = dataCamion.camionId;
-        const placa = dataCamion.placa;
         unidad = dataCamion.numeroUnidad;
-
-        if (unidad && placa) textoCamion = `Unidad ${unidad} (${placa})`;
-        else if (unidad) textoCamion = `Unidad ${unidad}`;
-        else textoCamion = "Unidad Asignada";
+        textoCamion = `Unidad ${unidad}` + (dataCamion.placa ? ` (${dataCamion.placa})` : "");
       } else {
         MI_CAMION_ID = null;
-        textoCamion = "Sin Unidad Asignada";
       }
-
       if (headerDisplay) headerDisplay.textContent = textoCamion;
       if (busDisplay) busDisplay.textContent = textoCamion;
 
+      // Si no tiene camión, forzamos estado inactivo
       if (!MI_CAMION_ID) {
         routeDisplay.textContent = "--";
         statusDisplay.textContent = "● Sin Asignación";
         statusDisplay.style.color = "gray";
+        gestionarEstadoBD("Inactivo");
         return;
       }
 
+      // 2. Obtener Horarios
       const resHorarios = await fetch(BACKEND_URL + "/api/horarios", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!resHorarios.ok) return;
-
       const todosHorarios = await resHorarios.json();
-      const hoyRaw = obtenerDiaSemana();
+
+      // Filtrar horarios de HOY para este conductor/camión
+      const hoyRaw = obtenerDiaSemana(); // función existente en tu código
+      const mapaDiasBackend = { lunes: "Lunes", martes: "Martes", miercoles: "Miércoles", jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo" };
       const hoyFormatted = mapaDiasBackend[hoyRaw];
 
       const misSalidasHoy = todosHorarios.filter((h) => {
         const esHoy = h.diaSemana === hoyFormatted;
-        const conductorEsYo =
-          h.infoConductor &&
-          h.infoConductor[0] &&
-          h.infoConductor[0]._id === (user._id || user.id);
+        const conductorEsYo = h.infoConductor && h.infoConductor[0] && h.infoConductor[0]._id === (user._id || user.id);
         const camionEsMio = String(h.camionUnidad) === String(unidad);
-
-        return esHoy && (conductorEsYo || camionEsMio);
+        // Fallback: Check por nombre si infoConductor no vino poblado profundo
+        const nombreCoincide = h.conductorNombre === user.nombre; 
+        
+        return esHoy && (conductorEsYo || camionEsMio || nombreCoincide);
       });
 
-      if (misSalidasHoy.length === 0) {
-        routeDisplay.textContent = "Sin Recorridos Hoy";
-        statusDisplay.innerHTML = "● Fuera de Servicio";
-        statusDisplay.className = "status-indicator status-off";
-        statusDisplay.style.color = "var(--color-error)";
-        return;
+      // Ordenar cronológicamente
+      misSalidasHoy.sort((a, b) => horaAEntero(a.hora) - horaAEntero(b.hora));
+
+      // 3. LÓGICA DE TIEMPO INTELIGENTE
+      const now = new Date();
+      const minutosActuales = now.getHours() * 60 + now.getMinutes();
+      
+      let viajeActivo = null;
+      let viajeSiguiente = null;
+      let estadoActual = "Fuera de Servicio";
+
+      // Recorremos todos los viajes para ver si estamos DENTRO de alguno
+      for (let i = 0; i < misSalidasHoy.length; i++) {
+        const viaje = misSalidasHoy[i];
+        
+        // Inicio del viaje
+        const inicio = horaAEntero(viaje.hora);
+        
+        // Duración: Usamos la de la ruta (DB) o 45 mins por defecto si no se definió
+        const duracion = viaje.rutaDuracion || 45; 
+        
+        // Fin del viaje
+        const fin = inicio + duracion;
+
+        // ¿Estoy en este intervalo? (Con 10 mins de tolerancia antes para prepararse)
+        if (minutosActuales >= (inicio - 10) && minutosActuales <= fin) {
+          viajeActivo = viaje;
+          viajeActivo.horaFin = minutosAHora(fin); // Guardamos la hora calculada de llegada
+          break; 
+        }
+
+        // Si no estoy en este, checamos si es el siguiente más próximo
+        if (minutosActuales < inicio && !viajeSiguiente) {
+            viajeSiguiente = viaje;
+        }
       }
 
-      MI_RUTA_NOMBRE = misSalidasHoy[0].rutaNombre || "Ruta Desconocida";
-      routeDisplay.textContent = MI_RUTA_NOMBRE;
-
-      misSalidasHoy.sort((a, b) => horaAEntero(a.hora) - horaAEntero(b.hora));
-      const ultimaSalida = misSalidasHoy[misSalidasHoy.length - 1].hora;
-      const now = new Date();
-      const horaActual = now.getHours() * 60 + now.getMinutes();
-      const horaLimite = horaAEntero(ultimaSalida) + 90;
-
-      if (horaActual > horaLimite) {
-        statusDisplay.innerHTML = "● Fuera de Servicio";
-        statusDisplay.className = "status-indicator status-off";
-        statusDisplay.style.color = "var(--color-error)";
-      } else {
-        statusDisplay.innerHTML = `● En Servicio (Fin: ${ultimaSalida})`;
+      // 4. ACTUALIZAR INTERFAZ Y BASE DE DATOS
+      if (viajeActivo) {
+        // --- CASO: EN SERVICIO ---
+        estadoActual = "En Servicio";
+        routeDisplay.textContent = viajeActivo.rutaNombre;
+        
+        statusDisplay.innerHTML = `● En Ruta (Llegada est: ${viajeActivo.horaFin})`;
         statusDisplay.className = "status-indicator status-on";
         statusDisplay.style.color = "var(--color-exito)";
 
-        // Solo verificamos que el socket esté activo
+        // Activar rastreo si no estaba
         iniciarGeolocalizacion();
+
+        // Actualizar variables globales para el geofencing
+        if(MI_RUTA_NOMBRE !== viajeActivo.rutaNombre) {
+            MI_RUTA_NOMBRE = viajeActivo.rutaNombre;
+            // Cargar trazado en el mapa
+            cargarRutaActiva(viajeActivo); 
+        }
+
+      } else {
+        // --- CASO: FUERA DE SERVICIO (Esperando o Terminado) ---
+        statusDisplay.className = "status-indicator status-off";
+        statusDisplay.style.color = "var(--color-error)";
+
+        if (viajeSiguiente) {
+            // Entre viajes o antes del primero
+            routeDisplay.textContent = "En Espera";
+            statusDisplay.innerHTML = `● Siguiente: ${viajeSiguiente.hora} (${viajeSiguiente.rutaNombre})`;
+            // Podríamos poner el estado como "Pendiente" o "Descanso" en la BD
+            estadoActual = "En Espera"; 
+        } else {
+            // Ya no hay más viajes hoy
+            routeDisplay.textContent = "Jornada Finalizada";
+            statusDisplay.innerHTML = "● Fuera de Servicio";
+            estadoActual = "Fuera de Servicio";
+        }
       }
+
+      // 5. SINCRONIZAR CON BASE DE DATOS (Solo si cambió)
+      gestionarEstadoBD(estadoActual);
+
     } catch (error) {
       console.error("Error estado conductor:", error);
-      routeDisplay.textContent = "Error de conexión";
     }
   }
 
+  // Nueva función para no saturar el servidor con PUTs repetidos
+  async function gestionarEstadoBD(nuevoEstado) {
+      if (ULTIMO_ESTADO_REPORTADO !== nuevoEstado) {
+          try {
+              console.log(`🔄 Actualizando estado en BD: ${ULTIMO_ESTADO_REPORTADO} -> ${nuevoEstado}`);
+              
+              // Usamos el endpoint de usuarios existente
+              const userId = (user._id || user.id);
+              await fetch(`${BACKEND_URL}/api/users/${userId}`, {
+                  method: 'PUT',
+                  headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}` 
+                  },
+                  // Solo actualizamos el estado, mantenemos el tipo conductor
+                  body: JSON.stringify({ 
+                      estado: nuevoEstado,
+                      tipo: "conductor" 
+                  })
+              });
+              
+              ULTIMO_ESTADO_REPORTADO = nuevoEstado;
+          } catch (e) {
+              console.error("Error sincronizando estado con BD", e);
+          }
+      }
+  }
   // 7. REPORTAR INCIDENTE
   const incidentModal = document.getElementById("incident-modal");
   const btnMainReporte = document.getElementById("btn-reporte-incidente");

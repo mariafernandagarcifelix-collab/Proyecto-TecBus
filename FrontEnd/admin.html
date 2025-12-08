@@ -280,6 +280,10 @@
                     placeholder="Ej. Ruta del TEC a la Central Camionera"
                   />
                 </div>
+                <div class="form-group">
+      <label for="ruta-tiempo">Tiempo Estimado (min)</label>
+      <input type="number" id="ruta-tiempo" placeholder="Ej. 45" required />
+    </div>
               </div>
               <button type="submit" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Registrar Ruta
@@ -539,6 +543,10 @@
               <input type="text" id="edit-ruta-descripcion" />
             </div>
             <div class="form-group">
+        <label for="edit-ruta-tiempo">Tiempo Estimado (min)</label>
+        <input type="number" id="edit-ruta-tiempo" required />
+      </div>
+            <div class="form-group">
               <label for="edit-ruta-activa">Estado</label>
               <select id="edit-ruta-activa">
                 <option value="true">Activa</option>
@@ -602,9 +610,6 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" id="btn-delete-from-modal" class="btn btn-danger btn-shrink">
-                    <i class="fas fa-trash"></i> Eliminar
-                </button>
                 <button type="submit" class="btn btn-primary btn-grow">
                     <i class="fas fa-save"></i> Guardar
                 </button>
