@@ -118,11 +118,23 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("perfil-nombre-completo").textContent = user.nombre || "Usuario";
     document.getElementById("perfil-correo").textContent = user.email || user.correo || "No registrado";
     
-    let idMostrar = "N/A";
-    if (user.estudiante && user.estudiante.matricula) idMostrar = user.estudiante.matricula;
-    else if (user.matricula) idMostrar = user.matricula; 
-    else if (user._id) idMostrar = user._id; 
-    else if (user.id) idMostrar = user.id;
+    let idMostrar = "Sin Identificador";
+    
+    // Función auxiliar para verificar si un dato es válido (no nulo, no vacío y no "PENDIENTE")
+    const esValido = (texto) => texto && texto !== "PENDIENTE" && texto.trim() !== "";
+
+    // 1. Buscamos matrícula en el objeto anidado 'estudiante'
+    if (user.estudiante && esValido(user.estudiante.matricula)) {
+        idMostrar = user.estudiante.matricula;
+    } 
+    // 2. Buscamos matrícula en la raíz del usuario
+    else if (esValido(user.matricula)) {
+        idMostrar = user.matricula; 
+    } 
+    // 3. Si no hay matrícula válida, usamos el ID interno de MongoDB (el código largo)
+    else if (user._id || user.id) {
+        idMostrar = (user._id || user.id); // Lo cortamos para que se vea bien
+    }
 
     document.getElementById("perfil-id").textContent = idMostrar;
 
