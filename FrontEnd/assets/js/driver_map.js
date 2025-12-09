@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const driverMarker = L.marker([initialLat, initialLng], { icon: driverIcon })
     .addTo(map)
-    .bindPopup("Esperando confirmación de BD...")
+    .bindPopup("Ubicación Guardada")
     .openPopup();
 
   // ============================================================
