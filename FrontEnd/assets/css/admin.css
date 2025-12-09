@@ -477,6 +477,25 @@
 }
 
 
+/* --- INDICADORES DE ESTADO (Columna ESTADO) --- */
+.status-dot {
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.status-active {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status-inactive {
+    color: #dc3545; /* Rojo */
+    font-weight: bold;
+}
+
 /* ----------------------------------------------------- */
 /* 5. Responsividad (Móvil) - Backdrop */
 /* ----------------------------------------------------- */

@@ -73,13 +73,55 @@ document.addEventListener("DOMContentLoaded", () => {
   // Esto permite cerrar sesión incluso si el backend falla
   const btnLogout = Array.from(navLinks).find(l => l.textContent.includes("Cerrar Sesión"));
   if(btnLogout) {
-      btnLogout.addEventListener("click", (e) => {
+      btnLogout.addEventListener("click", async (e) => {
           e.preventDefault();
           if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
+            
+            // 👇 NUEVO: Avisar al backend para poner estado: "inactivo"
+            try {
+                const token = localStorage.getItem("tecbus_token");
+                const user = JSON.parse(localStorage.getItem("tecbus_user"));
+                if(user && user.id) {
+                    await fetch(`${BACKEND_URL}/api/users/${user.id}`, {
+                        method: 'PUT',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({ estado: "inactivo" }) 
+                    });
+                }
+            } catch(err) { console.error("Error al cerrar sesión en BD", err); }
+
+            // Proceder a borrar localstorage y salir
             localStorage.removeItem("tecbus_token");
             localStorage.removeItem("tecbus_user");
             window.location.href = "index.html";
           }
       });
   }
+
+  // --- 6. DETECTOR DE CIERRE DE PESTAÑA (Auto-Logout) ---
+  window.addEventListener("beforeunload", () => {
+    const token = localStorage.getItem("tecbus_token");
+    const user = JSON.parse(localStorage.getItem("tecbus_user"));
+
+    // Solo si hay usuario y token, intentamos marcar como inactivo
+    if (user && user.id && token) {
+      
+      // Usamos fetch con 'keepalive: true'
+      // Esto le dice al navegador: "Manda esto a la base de datos aunque la ventana se cierre ya"
+      fetch(`${BACKEND_URL}/api/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ estado: "inactivo" }),
+        keepalive: true, // <--- ¡ESTA ES LA CLAVE!
+      });
+    }
+  });
+
+  
 });

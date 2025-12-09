@@ -1,6 +1,7 @@
 // frontend/assets/js/admin_dashboard.js
 
 document.addEventListener("DOMContentLoaded", () => {
+  
   // --- 1. VERIFICACIÓN DE SEGURIDAD ---
   const token = localStorage.getItem("tecbus_token");
   const userString = localStorage.getItem("tecbus_user");
@@ -13,6 +14,17 @@ document.addEventListener("DOMContentLoaded", () => {
     alert("Acceso denegado.");
     window.location.href = "index.html";
     return;
+  }
+
+  if(user && user.id) {
+      fetch(`${BACKEND_URL}/api/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ estado: "activo" }) 
+      }).catch(err => console.log("Error activando usuario al inicio", err));
   }
 
   // --- Variables Globales de Datos ---
@@ -219,37 +231,64 @@ document.addEventListener("DOMContentLoaded", () => {
     const tbody = document.getElementById("tabla-usuarios-body");
     if (!tbody) return;
     tbody.innerHTML = "";
+
     if (lista.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5">No hay usuarios.</td></tr>';
       return;
     }
+
     lista.forEach((u) => {
       const row = document.createElement("tr");
-      
-      // Lógica de colores de Badge
-      let badgeClass = "estudiante"; 
-      let estadoTexto = u.estado || "Inactivo"; // Variable para el texto
+
+      // 1. LÓGICA DE COLOR PARA LA COLUMNA "TIPO"
+      let badgeClass = "badge-secondary";
+      let tipoTexto = u.tipo.charAt(0).toUpperCase() + u.tipo.slice(1); // Capitalizar
 
       if (u.tipo === "administrador") {
-        badgeClass = "admin"; 
-        estadoTexto = "Admin";
+        badgeClass = "badge-admin"; // Verde
       } else if (u.tipo === "conductor") {
-        // 👇 AQUÍ ESTÁ EL CAMBIO QUE PEDISTE:
-        estadoTexto = "Conductor"; // Siempre dirá "Conductor" en vez del estado real
-        badgeClass = "conductor";
-        // Mantenemos los colores por si quieres saber si está activo visualmente
-        // if (u.estado === "En Servicio") badgeClass = "admin"; // Verde
-        // else if (u.estado === "Inicio de Recorridos") badgeClass = "conductor"; // Naranja
-        // else badgeClass = "secondary"; // Gris
+        badgeClass = "badge-conductor"; // Naranja
+      } else if (u.tipo === "estudiante") {
+        badgeClass = "badge-estudiante"; // Azul
       }
-      
-      const badgeHtml = `<span class="badge badge-${badgeClass}" style="${badgeClass === "secondary" ? "background:#666; color:white;" : ""}">${estadoTexto}</span>`;
-      
+
+      // 2. LÓGICA PARA LA COLUMNA "ESTADO" (Activo vs Inactivo)
+      let estaActivo = false;
+      let textoEstadoReal = "Inactivo";
+
+      if (u.tipo === "conductor") {
+        // Lógica Especial Conductor: Depende del horario/servicio
+        if (u.estado === "En Servicio") {
+            estaActivo = true;
+            textoEstadoReal = "Activo"; // Aunque en BD diga "En Servicio", mostramos Activo
+        } else {
+            // "En Espera", "Fuera de Servicio", "Inactivo" -> Se consideran Inactivos
+            estaActivo = false;
+            textoEstadoReal = "Inactivo";
+        }
+      } else {
+        // Lógica Admin/Estudiante: Depende del Login/Logout (estado 'activo' o 'inactivo' en BD)
+        // Asumimos que tu sistema de login pone u.estado = 'activo'
+        if (u.estado === "activo" || u.estado === "online") {
+            estaActivo = true;
+            textoEstadoReal = "Activo";
+        } else {
+            estaActivo = false;
+            textoEstadoReal = "Inactivo";
+        }
+      }
+
+      // Generar HTML del estado (Bolita verde o roja)
+      const estadoHtml = estaActivo
+        ? `<span class="status-active">● Activo</span>`
+        : `<span class="status-inactive">● Inactivo</span>`;
+
+      // 3. RENDERIZADO
       row.innerHTML = `
         <td>${u.nombre}</td>
         <td>${u.email}</td>
-        <td>${u.tipo}</td>
-        <td>${badgeHtml}</td>
+        <td><span class="badge ${badgeClass}">${tipoTexto}</span></td>
+        <td>${estadoHtml}</td>
         <td>
             <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${u._id}"><i class="fas fa-edit"></i></button>
             <button class="btn btn-danger btn-sm btn-delete-user" data-id="${u._id}"><i class="fas fa-trash"></i></button>
@@ -404,18 +443,43 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeModalBtnCamion = modalCamion?.querySelector(".close-button");
 
   function renderTablaCamiones(lista) {
-    const tablaBody = document.getElementById("tabla-camiones-body");
-    if (!tablaBody) return;
-    tablaBody.innerHTML = "";
+    const tbody = document.getElementById("tabla-camiones-body");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    
     if (lista.length === 0) {
       tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron camiones.</td></tr>';
       return;
     }
+
     lista.forEach((c) => {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${c.placa}</td><td>${c.numeroUnidad}</td><td>${c.modelo || "N/A"}</td><td><span class="badge badge-admin">${c.estado}</span></td>
-      <td><button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${c._id}"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-camion" data-id="${c._id}"><i class="fas fa-trash"></i></button></td>`;
-      tablaBody.appendChild(row);
+
+      // Lógica de Estado del Camión
+      let estaActivo = false;
+      
+      // Si el estado interno es "En Servicio", visualmente es Activo
+      if (c.estado === "En Servicio") {
+          estaActivo = true;
+      } 
+      // Si está "activo" (default de mongo), "mantenimiento", "En Espera", etc -> Inactivo visualmente
+      // Nota: Si quieres que 'activo' (disponible) se vea verde, cambia la condición.
+      // Pero según tu petición: "basarse en el horario... cuando este En Servicio estará Activo"
+      
+      const estadoHtml = estaActivo
+        ? `<span class="status-active">● Activo</span>`  // Se ve verde y dice Activo
+        : `<span class="status-inactive">● Inactivo</span>`; // Se ve rojo y dice Inactivo
+
+      row.innerHTML = `
+          <td>${c.placa}</td>
+          <td>${c.numeroUnidad}</td>
+          <td>${c.modelo || "N/A"}</td>
+          <td>${estadoHtml}</td>
+          <td>
+              <button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${c._id}"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger btn-sm btn-delete-camion" data-id="${c._id}"><i class="fas fa-trash"></i></button>
+          </td>`;
+      tbody.appendChild(row);
     });
   }
 
