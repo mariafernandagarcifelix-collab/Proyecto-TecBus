@@ -225,18 +225,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     lista.forEach((u) => {
       const row = document.createElement("tr");
+      
+      // Lógica de colores de Badge
       let badgeClass = "estudiante"; 
-      let estado = u.estado || "Inactivo"; 
+      let estadoTexto = u.estado || "Inactivo"; // Variable para el texto
 
       if (u.tipo === "administrador") {
-        badgeClass = "admin"; estado = "Admin";
+        badgeClass = "admin"; 
+        estadoTexto = "Admin";
       } else if (u.tipo === "conductor") {
-        if (u.estado === "En Servicio") badgeClass = "admin";
-        else if (u.estado === "Inicio de Recorridos") badgeClass = "conductor";
-        else badgeClass = "secondary"; 
+        // 👇 AQUÍ ESTÁ EL CAMBIO QUE PEDISTE:
+        estadoTexto = "Conductor"; // Siempre dirá "Conductor" en vez del estado real
+        badgeClass = "conductor";
+        // Mantenemos los colores por si quieres saber si está activo visualmente
+        // if (u.estado === "En Servicio") badgeClass = "admin"; // Verde
+        // else if (u.estado === "Inicio de Recorridos") badgeClass = "conductor"; // Naranja
+        // else badgeClass = "secondary"; // Gris
       }
       
-      const badgeHtml = `<span class="badge badge-${badgeClass}" style="${badgeClass === "secondary" ? "background:#666; color:white;" : ""}">${estado}</span>`;
+      const badgeHtml = `<span class="badge badge-${badgeClass}" style="${badgeClass === "secondary" ? "background:#666; color:white;" : ""}">${estadoTexto}</span>`;
+      
       row.innerHTML = `
         <td>${u.nombre}</td>
         <td>${u.email}</td>
@@ -335,7 +343,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-user-nombre").value = user.nombre;
     document.getElementById("edit-user-email").value = user.email;
     document.getElementById("edit-user-tipo").value = user.tipo;
-    document.getElementById("edit-user-estado").value = user.estado;
     if (user.tipo === "conductor") {
       camposConductorEdit.style.display = "block";
       document.getElementById("edit-user-licencia").value = user.conductor?.licencia || "No";
@@ -356,7 +363,6 @@ document.addEventListener("DOMContentLoaded", () => {
         nombre: document.getElementById("edit-user-nombre").value,
         email: document.getElementById("edit-user-email").value,
         tipo: tipo,
-        estado: document.getElementById("edit-user-estado").value,
       };
       if (tipo === "conductor") {
         datos.licencia = document.getElementById("edit-user-licencia").value;
@@ -489,7 +495,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-camion-placa").value = camion.placa;
     document.getElementById("edit-camion-unidad").value = camion.numeroUnidad;
     document.getElementById("edit-camion-modelo").value = camion.modelo || "";
-    document.getElementById("edit-camion-estado").value = camion.estado;
     const selRuta = document.getElementById("edit-camion-ruta");
     selRuta.innerHTML = '<option value="">-- Sin Ruta --</option>';
     rutasCargadas.forEach((r) => {
@@ -522,7 +527,6 @@ document.addEventListener("DOMContentLoaded", () => {
         placa: document.getElementById("edit-camion-placa").value,
         numeroUnidad: document.getElementById("edit-camion-unidad").value,
         modelo: document.getElementById("edit-camion-modelo").value,
-        estado: document.getElementById("edit-camion-estado").value,
         rutaAsignada: document.getElementById("edit-camion-ruta").value,
       };
       try {
