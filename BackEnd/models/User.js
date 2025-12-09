@@ -48,9 +48,17 @@ const userSchema = new mongoose.Schema({
     },
     telefono: { type: String },
     estado: {
-        type: String,
-        enum: ['activo', 'inactivo', 'pendiente'], // Tu diseño
-        default: 'activo'
+      type: String,
+      // 👇 AGREGAMOS AQUÍ LOS NUEVOS ESTADOS QUE USA EL CONDUCTOR
+      enum: [
+          "activo", 
+          "inactivo", 
+          "En Servicio", 
+          "En Espera", 
+          "Fuera de Servicio", 
+          "Inicio de Recorridos"
+      ],
+      default: "activo",
     },
     pushSubscription: {
         type: Object, // Guardaremos el objeto JSON que nos da el navegador

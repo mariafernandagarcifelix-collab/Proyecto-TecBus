@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const driverMarker = L.marker([initialLat, initialLng], { icon: driverIcon })
     .addTo(map)
-    .bindPopup("Esperando señal del ESP32...")
+    .bindPopup("Esperando confirmación de BD...")
     .openPopup();
 
   // ============================================================
@@ -84,38 +84,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- CORRECCIÓN 2: Escuchar al Servidor (ESP32) ---
   // Esta es la parte mágica que mueve el mapa cuando el ESP32 manda datos
-  socket.on("locationUpdate", (data) => {
-    // data contiene: { camionId, numeroUnidad, location: {lat, lng}, velocidad }
-
-    // Verificamos si la señal es para MI camión
-    // Comparamos ID de base de datos (MI_CAMION_ID) o Número de Unidad (Texto en header)
-    const esMiID =
-      MI_CAMION_ID && String(data.camionId) === String(MI_CAMION_ID);
-
-    // También verificamos por si el servidor manda el numero de unidad (ej: "TEC-01")
+  // --- CORRECCIÓN FINAL: ESCUCHAR, PERO CONSULTAR BD ---
+ // --- VERSIÓN DE DIAGNÓSTICO PARA SOCKETS ---
+  // --- LÓGICA CORREGIDA: Consultar TODOS los camiones (Igual que Estudiante/Admin) ---
+  socket.on("locationUpdate", async (data) => {
+    // 1. Verificamos si la señal es relevante para nosotros
+    const esMiID = MI_CAMION_ID && String(data.camionId) === String(MI_CAMION_ID);
     let esMiUnidad = false;
     if (headerDisplay && data.numeroUnidad) {
       esMiUnidad = headerDisplay.textContent.includes(data.numeroUnidad);
     }
 
     if (esMiID || esMiUnidad) {
-      console.log("📡 Señal recibida del ESP32:", data.location);
+      console.log("🔔 Señal recibida. Sincronizando con Base de Datos...");
 
-      const { lat, lng } = data.location;
-      const newLatLng = new L.LatLng(lat, lng);
+      try {
+        // 2. CORRECCIÓN: Pedimos la lista COMPLETA de camiones (esta ruta SI existe y funciona)
+        const response = await fetch(`${BACKEND_URL}/api/camiones`, {
+             headers: { Authorization: `Bearer ${token}` }
+        });
 
-      // 1. Mover el marcador
-      driverMarker.setLatLng(newLatLng);
+        if (response.ok) {
+            const listaCamiones = await response.json();
+            
+            // 3. Buscamos NUESTRO camión en la lista
+            const camionDB = listaCamiones.find(c => c._id === MI_CAMION_ID || c.id === MI_CAMION_ID);
 
-      // 2. Actualizar Popup con velocidad
-      const velocidad = data.velocidad ? Math.round(data.velocidad) : 0;
-      driverMarker.bindPopup(`📍 Ubicación Real (GPS)<br>🚀 ${velocidad} km/h`);
+            if (camionDB && camionDB.ubicacionActual && camionDB.ubicacionActual.coordinates) {
+                // MongoDB GeoJSON: coordinates [longitud, latitud]
+                const lngDB = camionDB.ubicacionActual.coordinates[0];
+                const latDB = camionDB.ubicacionActual.coordinates[1];
+                const velocidadDB = camionDB.velocidad || 0;
 
-      // 3. Centrar mapa suavemente
-      map.panTo(newLatLng);
+                console.log(`✅ Ubicación sincronizada: [${latDB}, ${lngDB}]`);
 
-      // 4. Verificar si llegó al destino (Geofence automático)
-      verificarLlegadaDestino(lat, lng);
+                const newLatLng = new L.LatLng(latDB, lngDB);
+
+                // 4. Mover el marcador
+                driverMarker.setLatLng(newLatLng);
+                driverMarker.bindPopup(`📍 Ubicación Real (BD)<br>🚀 ${Math.round(velocidadDB)} km/h`).openPopup();
+                
+                map.panTo(newLatLng);
+                verificarLlegadaDestino(latDB, lngDB);
+            } else {
+                console.warn("⚠️ Mi camión fue encontrado pero no tiene coordenadas en BD.");
+            }
+        } else {
+             console.error("❌ Error al obtener lista de camiones:", response.status);
+        }
+      } catch (error) {
+          console.error("❌ Error de red consultando BD:", error);
+      }
     }
   });
 
@@ -205,8 +224,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // 2. Limpiar mapa anterior
-      if (rutaPolyline) map.removeLayer(rutaPolyline); // Limpiar línea simple vieja
-      if (routingControl) map.removeControl(routingControl); // Limpiar ruta inteligente vieja
+      if (rutaPolyline) map.removeLayer(rutaPolyline); 
+      if (routingControl) {
+          map.removeControl(routingControl);
+          routingControl = null;
+      }
 
       // 3. Obtener datos de la ruta
       const response = await fetch(`${BACKEND_URL}/api/rutas/${viaje.rutaId}`, {
@@ -215,38 +237,65 @@ document.addEventListener("DOMContentLoaded", () => {
       const ruta = await response.json();
 
       if (ruta.paradas && ruta.paradas.length > 0) {
-        // Convertir paradas a formato Waypoints de Leaflet
-        const waypoints = ruta.paradas.map((p) =>
-          L.latLng(p.ubicacion.coordinates[1], p.ubicacion.coordinates[0])
-        );
+        
+        // Separar trazo de paradas
+        const puntosTrazo = ruta.paradas.filter(p => p.tipo === 'trazo');
+        const puntosParada = ruta.paradas.filter(p => p.tipo === 'parada_oficial' || !p.tipo);
 
-        // 4. Dibujar la Ruta Inteligente (Sigue calles)
-        routingControl = L.Routing.control({
-          waypoints: waypoints,
-          router: L.Routing.osrmv1({
-            serviceUrl: "https://router.project-osrm.org/route/v1", // Servidor público demo
-            profile: "driving",
-          }),
-          // Opciones visuales de la línea
-          lineOptions: {
-            styles: [{ color: "#007bff", opacity: 0.8, weight: 6 }], // Usa tu color primario aquí
-          },
-          // Opciones para ocultar cosas que no queremos
-          createMarker: function () {
-            return null;
-          },
-          addWaypoints: false,
-          draggableWaypoints: false,
-          fitSelectedRoutes: true, // Centrar mapa en la ruta
-          show: false,
-        }).addTo(map);
+        // --- CASO A: RUTA CON DISEÑO MANUAL (TRAZO) ---
+        if (puntosTrazo.length > 0) {
+            console.log("🎨 Cargando ruta con diseño manual...");
+            
+            // Dibujamos la línea exactamente como la diseñaste
+            const coords = puntosTrazo.map(p => [p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]]);
+            
+            rutaPolyline = L.polyline(coords, {
+                color: "#007bff", // Color azul conductor
+                weight: 6,
+                opacity: 0.8
+            }).addTo(map);
 
-        // 5. ESTABLECER DESTINO PARA EL GEOFENCING
-        const ultimoPunto = waypoints[waypoints.length - 1];
-        DESTINO_ACTUAL = { lat: ultimoPunto.lat, lng: ultimoPunto.lng };
+            // Marcar las paradas visualmente
+            puntosParada.forEach(p => {
+                 L.circleMarker([p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]], {
+                     radius: 6, color: 'white', fillColor: '#ffc107', fillOpacity: 1, weight: 2
+                 }).addTo(map).bindPopup(p.nombre);
+            });
+
+            // Establecer destino (último punto del trazo)
+            const ultimo = coords[coords.length - 1];
+            DESTINO_ACTUAL = { lat: ultimo[0], lng: ultimo[1] };
+            map.fitBounds(rutaPolyline.getBounds());
+        } 
+        // --- CASO B: RUTA ANTIGUA (SIN TRAZO, SOLO PARADAS) ---
+        else {
+             console.log("🗺️ Cargando ruta automática (OSRM)...");
+             const waypoints = puntosParada.map((p) =>
+                L.latLng(p.ubicacion.coordinates[1], p.ubicacion.coordinates[0])
+             );
+
+             routingControl = L.Routing.control({
+                waypoints: waypoints,
+                router: L.Routing.osrmv1({
+                  serviceUrl: "https://router.project-osrm.org/route/v1",
+                  profile: "driving",
+                }),
+                lineOptions: {
+                  styles: [{ color: "#007bff", opacity: 0.8, weight: 6 }],
+                },
+                createMarker: function () { return null; },
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: true,
+                show: false,
+              }).addTo(map);
+              
+             const ultimoPunto = waypoints[waypoints.length - 1];
+             DESTINO_ACTUAL = { lat: ultimoPunto.lat, lng: ultimoPunto.lng };
+        }
 
         LLEGADA_DETECTADA = false;
-        console.log("🚩 Nuevo destino (Geofence) fijado en:", DESTINO_ACTUAL);
+        console.log("🚩 Destino fijado:", DESTINO_ACTUAL);
       }
     } catch (error) {
       console.error("Error cargando ruta:", error);
@@ -259,31 +308,37 @@ document.addEventListener("DOMContentLoaded", () => {
       const resCamion = await fetch(BACKEND_URL + "/api/users/mi-camion", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // Manejo de error si la API falla
+      if (!resCamion.ok) {
+         console.warn("⚠️ Falló petición camión");
+         return; 
+      }
+
       const dataCamion = await resCamion.json();
+      let textoCamion = "Sin Unidad";
+      let unidad = null;
 
-      if (resCamion.ok && dataCamion.camionId) {
+      if (dataCamion.camionId) {
         MI_CAMION_ID = dataCamion.camionId;
-        let texto = `Unidad ${dataCamion.numeroUnidad}`;
-        if (dataCamion.placa) texto += ` (${dataCamion.placa})`;
-        headerDisplay.textContent = texto;
-        busDisplay.textContent = texto;
+        unidad = dataCamion.numeroUnidad;
+        textoCamion = `Unidad ${unidad}` + (dataCamion.placa ? ` (${dataCamion.placa})` : "");
+      }
 
-        // --- CORRECCIÓN 4: Cargar última ubicación conocida de la BD ---
-        if (
-          dataCamion.ubicacionActual &&
-          dataCamion.ubicacionActual.coordinates
-        ) {
+      if (headerDisplay) headerDisplay.textContent = textoCamion;
+      // CORRECCIÓN DEL ERROR: Verificar si existe busDisplay antes de usarlo
+      if (busDisplay) busDisplay.textContent = textoCamion;
+
+      if (dataCamion.ubicacionActual && dataCamion.ubicacionActual.coordinates) {
           const [lng, lat] = dataCamion.ubicacionActual.coordinates;
-          console.log("📍 Cargando ubicación inicial desde BD:", lat, lng);
           const posInicial = new L.LatLng(lat, lng);
           driverMarker.setLatLng(posInicial);
           map.setView(posInicial, 15);
-        }
-      } else {
-        routeDisplay.textContent = "--";
-        statusDisplay.textContent = "● Sin Camión Asignado";
-        return; // No iniciar nada si no tiene camión
       }
+      // } else {
+      //   routeDisplay.textContent = "--";
+      //   statusDisplay.textContent = "● Sin Camión Asignado";
+      //   return; // No iniciar nada si no tiene camión
+      // }
 
       // B. Obtener TODOS los horarios del día
       const resHorarios = await fetch(BACKEND_URL + "/api/horarios", {
@@ -362,23 +417,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function iniciarGeolocalizacion() {
+    console.log("📡 Sistema en modo: Escuchando Sockets + Fetch BD");
+  }
+
   // ============================================================
   // 6. INICIAR MODO DE SEGUIMIENTO
   // ============================================================
 
-  function iniciarGeolocalizacion() {
-    // --- CORRECCIÓN 3: MODO PASIVO ---
-    // Ya no llamamos a navigator.geolocation.watchPosition
-    console.log("📡 Sistema iniciado en modo RECEPTOR DE DATOS (ESP32).");
-    console.log("   Esperando eventos 'locationUpdate' del servidor...");
+  // function iniciarGeolocalizacion() {
+  //   // --- CORRECCIÓN 3: MODO PASIVO ---
+  //   // Ya no llamamos a navigator.geolocation.watchPosition
+  //   console.log("📡 Sistema iniciado en modo RECEPTOR DE DATOS (ESP32).");
+  //   console.log("   Esperando eventos 'locationUpdate' del servidor...");
 
-    if (driverMarker) {
-      // Si no se cargó la posición inicial de la BD, mostramos esto
-      if (driverMarker.getPopup().getContent() === "Tu ubicación") {
-        driverMarker.bindPopup("Esperando señal del ESP32...").openPopup();
-      }
-    }
-  }
+  //   if (driverMarker) {
+  //     // Si no se cargó la posición inicial de la BD, mostramos esto
+  //     if (driverMarker.getPopup().getContent() === "Tu ubicación") {
+  //       driverMarker.bindPopup("Esperando señal del ESP32...").openPopup();
+  //     }
+  //   }
+  // }
 
   // 4. LÓGICA DEL MENÚ LATERAL Y MODALES
 
@@ -717,7 +776,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const fin = inicio + duracion;
 
           // A. ¿Estamos en los 10 mins de PREPARACIÓN?
-          if (minutosActuales >= (inicio - 10) && minutosActuales < inicio) {
+          if (minutosActuales >= (inicio - 1 ) && minutosActuales < inicio) {
               viajeActivo = viaje;
               viajeActivo.horaFin = minutosAHora(fin);
               esPreparacion = true; 

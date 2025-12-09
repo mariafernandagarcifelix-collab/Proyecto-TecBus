@@ -14,6 +14,11 @@ const paradaSchema = new mongoose.Schema({
   orden: { type: Number },
   ubicacion: { type: pointSchema }, //
   tiempoEstimado: { type: Number }, //
+  tipo: { 
+      type: String, 
+      enum: ['trazo', 'parada_oficial'], 
+      default: 'parada_oficial' 
+  }
 });
 
 const rutaSchema = new mongoose.Schema(

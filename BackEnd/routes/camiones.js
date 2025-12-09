@@ -215,4 +215,23 @@ function deg2rad(deg) {
   return deg * (Math.PI / 180);
 }
 
+// --- RUTA NUEVA: Obtener un camión por su ID ---
+// GET /api/camiones/:id
+router.get("/:id", protect, async (req, res) => {
+  try {
+    // 1. Buscamos el camión en MongoDB por su ID único
+    const camion = await Camion.findById(req.params.id);
+
+    if (!camion) {
+      return res.status(404).json({ message: "Camión no encontrado en la BD" });
+    }
+
+    // 2. Devolvemos el objeto completo (incluyendo coordenadas guardadas)
+    res.json(camion);
+    
+  } catch (error) {
+    console.error("Error al obtener camión individual:", error);
+    res.status(500).json({ message: "Error en el servidor al consultar camión" });
+  }
+});
 module.exports = router;

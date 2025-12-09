@@ -146,62 +146,72 @@ document.addEventListener("DOMContentLoaded", () => {
   // En tu archivo admin_dashboard.js, busca la función inicializarDashboard y usa esta:
 
   async function inicializarDashboard() {
-    // 1. Camiones
+    console.log("🔄 Actualizando mapa y datos del Dashboard...");
+
+    // 1. Cargar Camiones (Mapa)
     try {
-      const res = await fetch(BACKEND_URL_API + "/camiones", {
+      // CORRECCIÓN: Usamos BACKEND_URL + "/api" en lugar de la variable indefinida
+      const res = await fetch(BACKEND_URL + "/api/camiones", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const camiones = await res.json();
         camionesCargados = camiones;
 
+        // Limpiar marcadores viejos de camiones
         Object.values(busMarkers).forEach((m) => map.removeLayer(m));
         busMarkers = {};
-        document.getElementById("kpi-total-buses").textContent =
-          camiones.length;
+        
+        // Actualizar contador
+        const elTotalBuses = document.getElementById("kpi-total-buses");
+        if(elTotalBuses) elTotalBuses.textContent = camiones.length;
 
+        // Dibujar camiones
         camiones.forEach((c) => {
-          if (c.ubicacionActual) {
+          if (c.ubicacionActual && c.ubicacionActual.coordinates) {
             const [lng, lat] = c.ubicacionActual.coordinates;
             const m = L.marker([lat, lng], { icon: busIcon })
               .addTo(map)
-              .bindPopup(`🚍 ${c.numeroUnidad}`);
+              .bindPopup(`🚍 <b>${c.numeroUnidad}</b><br>Vel: ${c.velocidad || 0} km/h`);
             busMarkers[c._id] = m;
           }
         });
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error cargando camiones:", e);
     }
 
-    // 2. Conductores Activos (Lógica Estricta)
+    // 2. Cargar Conductores Activos (KPI)
     try {
-      const res = await fetch(BACKEND_URL_API + "/users", {
+      // CORRECCIÓN: Usamos BACKEND_URL + "/api"
+      const res = await fetch(BACKEND_URL + "/api/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const users = await res.json();
         usuariosCargados = users;
 
-        // FILTRO EXACTO: Solo cuenta si el backend dice "En Servicio"
         const activos = users.filter(
           (u) => u.tipo === "conductor" && u.estado === "En Servicio"
         ).length;
-        document.getElementById("kpi-drivers-active").textContent = activos;
+        
+        const elDrivers = document.getElementById("kpi-drivers-active");
+        if(elDrivers) elDrivers.textContent = activos;
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error cargando usuarios:", e);
     }
 
-    // 3. Alertas
+    // 3. Cargar Alertas (KPI)
     try {
       const responseAlerts = await fetch(BACKEND_URL + "/api/notificaciones", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (responseAlerts.ok) {
         const alerts = await responseAlerts.json();
-        alertCount = alerts.length; // Sincronizar variable global
-        document.getElementById("kpi-active-alerts").textContent = alertCount;
+        alertCount = alerts.length;
+        const elAlerts = document.getElementById("kpi-active-alerts");
+        if(elAlerts) elAlerts.textContent = alertCount;
       }
     } catch (error) {
       console.error("Error cargando KPI alertas:", error);
@@ -251,14 +261,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   socket.on("studentWaiting", (data) => {
+    console.log("🙋‍♂️ Estudiante esperando detectado:", data);
+    
+    // Incrementar contador visual
     studentCount++;
-    kpiStudents.textContent = studentCount;
-    L.circle([data.location.lat, data.location.lng], {
-      color: "var(--color-exito)",
-      radius: 50,
-    })
-      .addTo(map)
-      .bindPopup(`Estudiante esperando (ID: ${data.userId})`);
+    if(kpiStudents) kpiStudents.textContent = studentCount;
+
+    // Dibujar círculo verde en el mapa
+    if (data.location && data.location.lat && data.location.lng) {
+        L.circle([data.location.lat, data.location.lng], {
+          color: "var(--color-exito)", // Verde
+          fillColor: "#2ecc71",
+          fillOpacity: 0.5,
+          radius: 30,
+        })
+          .addTo(map)
+          .bindPopup(`<b>Estudiante Esperando</b><br>Hora: ${new Date().toLocaleTimeString()}`);
+    }
   });
 
   // async function fetchAndDrawBuses() {

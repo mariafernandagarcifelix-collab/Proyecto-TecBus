@@ -92,7 +92,8 @@ router.get("/mi-camion", protect, async (req, res) => {
     res.json({
       camionId: camion._id,
       placa: camion.placa,
-      numeroUnidad: camion.numeroUnidad
+      numeroUnidad: camion.numeroUnidad,
+      ubicacionActual: camion.ubicacionActual
     });
 
   } catch (error) {
@@ -103,11 +104,15 @@ router.get("/mi-camion", protect, async (req, res) => {
 
 // --- RUTA 3: Actualizar un USUARIO (¡La más importante!) ---
 // PUT /api/users/:id
-router.put("/:id", protect, adminOnly, async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    if (req.user.tipo !== 'administrador' && req.user._id.toString() !== req.params.id) {
+        return res.status(401).json({ message: "No autorizado para editar este usuario" });
     }
 
     const {

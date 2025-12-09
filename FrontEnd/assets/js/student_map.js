@@ -460,9 +460,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Dibujar Línea de Ruta
+  // Dibujar Línea de Ruta (Con soporte para Trazado Manual)
+  let stopMarkers = []; // Arreglo para guardar los marcadores de paradas y borrarlos al cambiar
+
   async function dibujarRuta(rutaId) {
     try {
+      // 1. Limpiar mapa anterior
       if (rutaPolyline) map.removeLayer(rutaPolyline);
+      stopMarkers.forEach(m => map.removeLayer(m));
+      stopMarkers = [];
+      
       if (!rutaId) return;
 
       const response = await fetch(`${BACKEND_URL}/api/rutas/${rutaId}`, {
@@ -472,7 +479,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!ruta.paradas || ruta.paradas.length === 0) return;
 
-      const coordenadas = ruta.paradas.map((p) => [
+      // 2. SEPARAR PUNTOS (Trazo vs Paradas)
+      // Si la ruta es antigua y no tiene 'tipo', asumimos que todo son paradas (fallback)
+      const puntosTrazo = ruta.paradas.filter(p => p.tipo === 'trazo');
+      const puntosParada = ruta.paradas.filter(p => p.tipo === 'parada_oficial' || !p.tipo);
+
+      // 3. DIBUJAR LÍNEA (El diseño)
+      // Usamos el trazo si existe, si no, unimos las paradas (modo simple)
+      const puntosParaLinea = puntosTrazo.length > 0 ? puntosTrazo : puntosParada;
+      
+      const coordenadas = puntosParaLinea.map((p) => [
         p.ubicacion.coordinates[1], // lat
         p.ubicacion.coordinates[0], // lng
       ]);
@@ -483,6 +499,21 @@ document.addEventListener("DOMContentLoaded", () => {
         opacity: 0.8,
         lineJoin: "round",
       }).addTo(map);
+
+      // 4. DIBUJAR MARCADORES DE PARADAS (Iconos)
+      // Icono visual para las paradas físicas
+      const paradaIcon = L.divIcon({
+          className: 'stop-marker-icon',
+          html: '<div style="background-color:#ffc107; border:2px solid white; width:12px; height:12px; border-radius:50%; box-shadow:0 0 4px black;"></div>',
+          iconSize: [12, 12]
+      });
+
+      puntosParada.forEach(p => {
+          const marker = L.marker([p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]], { icon: paradaIcon })
+              .bindPopup(`🚏 <strong>${p.nombre || "Parada"}</strong>`)
+              .addTo(map);
+          stopMarkers.push(marker);
+      });
 
       map.fitBounds(rutaPolyline.getBounds(), { padding: [50, 50] });
     } catch (error) {
