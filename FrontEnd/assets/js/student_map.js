@@ -481,34 +481,100 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- NOTIFICACIONES PUSH ---
   async function activarNotificaciones() {
-    if (!confirm("¿Activar notificaciones?")) return;
-    if (location.protocol === "http:" && location.hostname !== "localhost") {
-        alert("⚠️ Requiere HTTPS."); return;
+    const deseaActivar = confirm(
+      "¿Quieres recibir notificaciones cuando tu camión esté cerca?"
+    );
+
+    if (!deseaActivar) {
+      console.log("🚫 Activación cancelada por el usuario.");
+      return; // Se detiene aquí si dice que no
     }
-    if (!("serviceWorker" in navigator)) return;
+    console.log("🚀 Iniciando activación de notificaciones...");
+
+    // 1. Diagnóstico de Seguridad
+    if (
+      window.location.protocol === "http:" &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+    ) {
+      alert(
+        "⚠️ ERROR CRÍTICO DE SEGURIDAD:\n\nLas notificaciones NO funcionan en direcciones IP (http://192.168...). \n\nDebes usar 'localhost' o subirlo a un servidor seguro (https)."
+      );
+      return;
+    }
+
+    // 2. Diagnóstico de Soporte
+    if (!("serviceWorker" in navigator)) {
+      alert("❌ Tu navegador no soporta Service Workers.");
+      return;
+    }
 
     try {
+      // 3. Solicitar Permiso
       const permission = await Notification.requestPermission();
-      if (permission !== "granted") { alert("⛔ Permiso denegado."); return; }
+      console.log("Permiso:", permission);
 
+      if (permission !== "granted") {
+        alert(
+          "⛔ Permiso denegado. Tienes que habilitar las notificaciones manualmente en la configuración del sitio (candado 🔒)."
+        );
+        return;
+      }
+
+      // 4. Registrar Service Worker
+      // INTENTO ROBUSTO: Probamos rutas comunes por si sw.js no está en la raíz
       let register;
-      try { register = await navigator.serviceWorker.register("sw.js"); } 
-      catch (e) { register = await navigator.serviceWorker.register("../sw.js"); }
+      try {
+        register = await navigator.serviceWorker.register("sw.js");
+      } catch (e) {
+        console.warn("Fallo ruta raíz, probando ../sw.js");
+        register = await navigator.serviceWorker.register("../sw.js");
+      }
 
+      console.log("✅ Service Worker registrado:", register);
       await navigator.serviceWorker.ready;
+
+      // 5. Suscribirse
       const subscription = await register.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY),
       });
 
-      const res = await fetch(`${BACKEND_URL}/api/notificaciones/suscribir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(subscription),
+      console.log("✅ Suscripción generada:", subscription);
+
+      // 6. Guardar en Backend
+      const token = localStorage.getItem("tecbus_token");
+      const response = await fetch(
+        `${BACKEND_URL}/api/notificaciones/suscribir`,
+        {
+          method: "POST",
+          body: JSON.stringify(subscription),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok)
+        throw new Error(`Error del Servidor: ${response.status}`);
+
+      alert(
+        "🎉 ¡ÉXITO! Notificaciones activadas.\n\nEn unos segundos deberías recibir una notificación de confirmación de la activación."
+      );
+
+      // 7. Prueba Inmediata
+      await fetch(`${BACKEND_URL}/api/notificaciones/mi-prediccion-prueba`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if(res.ok) alert("🎉 Notificaciones activadas.");
-      
-    } catch (error) { console.error(error); alert("Error activando notificaciones."); }
+    } catch (error) {
+      console.error("❌ ERROR TÉCNICO DETALLADO:", error);
+      // Esta alerta te dirá exactamente qué pasó
+      alert(
+        `❌ ERROR TÉCNICO:\n${error.name}: ${error.message}\n\n(Revisa la consola con F12 para más detalles)`
+      );
+    }
   }
 
   // Ayuda / Instrucciones

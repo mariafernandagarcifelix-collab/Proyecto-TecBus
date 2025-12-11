@@ -861,57 +861,50 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- LÓGICA DE BÚSQUEDA DE HORARIOS CORREGIDA (VERSIÓN FINAL) ---
+  // --- LÓGICA DE BÚSQUEDA DE HORARIOS (CORREGIDA Y UNIFICADA) ---
   const formSearchHorario = document.getElementById("form-search-horario");
+  
   if (formSearchHorario) {
     formSearchHorario.addEventListener("submit", (e) => {
       e.preventDefault();
       
-      // 1. OBTENER LOS TEXTOS SELECCIONADOS (No los valores/IDs)
+      // 1. Obtener valores de los campos (Con nombres claros)
       const selRuta = document.getElementById("search-horario-ruta");
-      const textoRuta = selRuta.value ? selRuta.options[selRuta.selectedIndex].text : "";
-      
       const selDia = document.getElementById("search-horario-dia");
-      const textoDia = selDia.value ? selDia.options[selDia.selectedIndex].text : "";
-
-      const horaInput = document.getElementById("search-horario-hora").value;
-
+      const elHora = document.getElementById("search-horario-hora"); // El input de hora
       const selCamion = document.getElementById("search-horario-camion");
-      // El texto del camión suele ser "10 (ABC-123)", buscamos solo el número "10" o todo
-      const textoCamion = selCamion.value ? selCamion.options[selCamion.selectedIndex].text : "";
-
       const selConductor = document.getElementById("search-horario-conductor");
-      const textoConductor = selConductor.value ? selConductor.options[selConductor.selectedIndex].text : "";
+
+      // 2. Extraer texto para comparar
+      const busquedaRuta = selRuta ? selRuta.value.toLowerCase() : "";
+      const busquedaDia = selDia ? selDia.value : "";
+      const busquedaHora = elHora ? elHora.value : ""; // Valor ej: "08:00"
+      const busquedaCamion = selCamion ? selCamion.value.toLowerCase() : "";
+      const busquedaConductor = selConductor ? selConductor.value.toLowerCase() : "";
 
       const filtrados = horariosCargados.filter((h) => {
-        // --- 1. RUTA ---
-        // Comparamos el nombre de la ruta que viene del backend vs el texto del select
-        const matchRuta = !textoRuta || (h.rutaNombre && h.rutaNombre.includes(textoRuta));
-
-        // --- 2. DÍA ---
-        // Aquí sí podemos usar el valor directo porque es estático (Lunes, Martes...)
-        const valDia = selDia.value;
-        const matchDia = !valDia || (h.diaSemana === valDia);
-
-        // --- 3. HORA ---
+        // A. Filtro Ruta
+        const matchRuta = !busquedaRuta || (h.rutaNombre && h.rutaNombre.toLowerCase().includes(busquedaRuta));
+        
+        // B. Filtro Día
+        const matchDia = !busquedaDia || (h.diaSemana === busquedaDia);
+        
+        // C. Filtro Hora (CORREGIDO)
         let matchHora = true;
-        if (horaInput) {
-            // Normalizamos "07:00" a "7:00" para comparar
-            const hHoraDB = h.hora ? h.hora.replace(/^0+/, '') : "";
-            const hHoraInput = horaInput.replace(/^0+/, '');
-            matchHora = hHoraDB.startsWith(hHoraInput);
+        if (busquedaHora) {
+            // Quitamos el cero inicial para comparar (ej: convierte "09:00" a "9:00")
+            const horaEnBD = h.hora ? h.hora.toString().replace(/^0+/, '') : "";
+            const horaBuscada = busquedaHora.toString().replace(/^0+/, '');
+            
+            // Verificamos si empieza igual (para que "9" encuentre "9:00" y "9:30")
+            matchHora = horaEnBD.startsWith(horaBuscada);
         }
 
-        // --- 4. CAMIÓN ---
-        // Comparamos el texto "Unidad 10" o "10" contra lo que hay en h.camionUnidad
-        const matchCamion = !textoCamion || (
-            h.camionUnidad && textoCamion.includes(h.camionUnidad.toString())
-        );
+        // D. Filtro Camión
+        const matchCamion = !busquedaCamion || (h.camionUnidad && h.camionUnidad.toString().toLowerCase().includes(busquedaCamion));
 
-        // --- 5. CONDUCTOR ---
-        // Comparamos el nombre "Juan Pérez" contra h.conductorNombre
-        const matchConductor = !textoConductor || (
-            h.conductorNombre && h.conductorNombre.toLowerCase().includes(textoConductor.toLowerCase())
-        );
+        // E. Filtro Conductor
+        const matchConductor = !busquedaConductor || (h.conductorNombre && h.conductorNombre.toLowerCase().includes(busquedaConductor));
 
         return matchRuta && matchDia && matchHora && matchCamion && matchConductor;
       });
@@ -919,6 +912,17 @@ document.addEventListener("DOMContentLoaded", () => {
       renderTablaHorarios(filtrados);
       document.getElementById("search-horario-modal").classList.remove("modal-visible");
     });
+  }
+
+  // --- EVENTO PARA ABRIR Y LLENAR EL MODAL DE BÚSQUEDA ---
+  // Esto asegura que los selects se llenen ANTES de mostrar el modal
+  const btnOpenSearchHorario = document.querySelector("#btn-open-search-horario") || document.querySelector(".btn-open-search[data-target='horario']");
+  
+  if (btnOpenSearchHorario) {
+      btnOpenSearchHorario.addEventListener("click", () => {
+          popularDropdownsHorarios("buscar"); // <--- Esto llena los selects con NOMBRES
+          document.getElementById("search-horario-modal").classList.add("modal-visible");
+      });
   }
 
   document.getElementById("tabla-horarios-body")?.addEventListener("click", (e) => {
@@ -934,24 +938,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  async function popularDropdownsHorarios(modo = 'registro') {
-    // Determinamos el prefijo según el modo
-    let prefix = "horario"; // Default (Registro)
-    if (modo === 'edicion') prefix = "edit-horario";
-    if (modo === 'busqueda') prefix = "search-horario";
+  // --- FUNCIÓN MEJORADA PARA LLENAR LISTAS (CREAR, EDITAR Y BUSCAR) ---
+  async function popularDropdownsHorarios(modo = "crear") {
+    // Definir prefijos según el modo
+    // modo 'crear' -> id="horario-ruta"
+    // modo 'editar' -> id="edit-horario-ruta"
+    // modo 'buscar' -> id="search-horario-ruta"
+    
+    let prefix = "horario";
+    if (modo === "editar") prefix = "edit-horario";
+    if (modo === "buscar") prefix = "search-horario";
 
     const selRuta = document.getElementById(`${prefix}-ruta`);
     const selCamion = document.getElementById(`${prefix}-camion`);
     const selConductor = document.getElementById(`${prefix}-conductor`);
-    
-    // Texto por defecto para la primera opción
-    const defaultText = modo === 'busqueda' ? "-- Todos --" : "-- Selecciona --";
 
-    // Limpieza inicial visual
-    if(selRuta) selRuta.innerHTML = '<option>Cargando...</option>';
+    // Evitar recargar si ya tiene datos (Solo para búsqueda, para no perder la selección)
+    if (modo === "buscar" && selRuta && selRuta.options.length > 1) return;
+
+    // Limpieza inicial
+    if (selRuta) selRuta.innerHTML = '<option value="">-- C a r g a n d o --</option>';
+    if (selCamion) selCamion.innerHTML = '<option value="">-- C a r g a n d o --</option>';
+    if (selConductor) selConductor.innerHTML = '<option value="">-- C a r g a n d o --</option>';
 
     try {
-      // Pedimos datos al servidor
       const [resRutas, resCamiones, resConductores] = await Promise.all([
         fetch(BACKEND_URL + "/api/rutas", { headers: { Authorization: `Bearer ${token}` } }),
         fetch(BACKEND_URL + "/api/camiones", { headers: { Authorization: `Bearer ${token}` } }),
@@ -965,33 +975,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 1. LLENAR RUTAS
       if (selRuta) {
-        selRuta.innerHTML = `<option value="">${defaultText}</option>`;
-        rutas.forEach(r => { 
-            // En búsqueda mostramos todas, en registro solo activas
-            if(modo === 'busqueda' || r.activa) {
-                selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`; 
-            }
+        selRuta.innerHTML = '<option value="">-- Todos / Seleccionar --</option>';
+        rutas.forEach((r) => {
+          if (r.activa) {
+            // TRUCO: Si es búsqueda, usamos el NOMBRE como valor. Si es crear/editar, usamos el ID.
+            const valor = modo === "buscar" ? r.nombre : r._id; 
+            selRuta.innerHTML += `<option value="${valor}">${r.nombre}</option>`;
+          }
         });
       }
 
       // 2. LLENAR CAMIONES
       if (selCamion) {
-        selCamion.innerHTML = `<option value="">${defaultText}</option>`;
-        camiones.forEach(c => { 
-             // En búsqueda mostramos todos, en registro solo activos
-             if(modo === 'busqueda' || c.estado === 'activo' || c.estado === 'En Servicio') {
-                 selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`; 
-             }
+        selCamion.innerHTML = '<option value="">-- Todos / Seleccionar --</option>';
+        camiones.forEach((c) => {
+          if (c.estado === "activo" || modo === "buscar") { // En búsqueda mostramos todos
+             const valor = modo === "buscar" ? c.numeroUnidad : c._id;
+             selCamion.innerHTML += `<option value="${valor}">${c.numeroUnidad} (${c.placa})</option>`;
+          }
         });
       }
 
       // 3. LLENAR CONDUCTORES
       if (selConductor) {
-        selConductor.innerHTML = `<option value="">${defaultText}</option>`;
-        conductores.forEach(c => selConductor.innerHTML += `<option value="${c._id}">${c.nombre}</option>`);
+        selConductor.innerHTML = '<option value="">-- Todos / Seleccionar --</option>';
+        conductores.forEach((c) => {
+             const valor = modo === "buscar" ? c.nombre : c._id;
+             selConductor.innerHTML += `<option value="${valor}">${c.nombre}</option>`;
+        });
       }
 
-    } catch (e) { console.error("Error cargando dropdowns:", e); }
+    } catch (e) {
+      console.error(e);
+      if(selRuta) selRuta.innerHTML = '<option value="">Error al cargar</option>';
+    }
   }
 
   async function abrirEditarHorario(horarioId, salidaId) {
@@ -1055,6 +1072,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if(closeBtnHorario) closeBtnHorario.onclick = () => modalEditarHorario.classList.remove("modal-visible");
   window.cerrarModalEditarHorario = () => modalEditarHorario.classList.remove("modal-visible");
 
+  
+  botonesBusqueda.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+          const tipo = btn.dataset.target; // Asumiendo que usas data-target="horario"
+          if (tipo === "horario" || btn.getAttribute('onclick')?.includes('horario')) {
+              // 👇 ESTO LLENA EL SELECTOR DE BÚSQUEDA
+              popularDropdownsHorarios("buscar");
+          }
+      });
+  });
 
   // ============================================================
   //  8. EDITOR DE RUTAS (MAPA)
@@ -1517,46 +1544,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (modal) modal.classList.add("modal-visible");
   };
 
-  if (formSearchHorario) {
-    formSearchHorario.addEventListener("submit", (e) => {
-      e.preventDefault();
-      
-      // Obtener valores de los Selects (IDs) y el Input Time
-      const rutaId = document.getElementById("search-horario-ruta").value;
-      const dia = document.getElementById("search-horario-dia").value;
-      const hora = document.getElementById("search-horario-hora").value;
-      const camionId = document.getElementById("search-horario-camion").value;
-      const conductorId = document.getElementById("search-horario-conductor").value;
-
-      const filtrados = horariosCargados.filter((h) => {
-        // 1. Filtro Ruta (Por ID o Nombre si el objeto no está poblado)
-        // h.ruta puede ser un objeto {_id: ...} o un string ID, dependiendo del backend
-        const hRutaId = h.ruta?._id || h.ruta; 
-        const matchRuta = !rutaId || (hRutaId === rutaId);
-
-        // 2. Filtro Día
-        const matchDia = !dia || h.diaSemana === dia;
-
-        // 3. Filtro Hora (Búsqueda parcial, ej: "07" encuentra "07:00", "07:30")
-        const matchHora = !hora || h.hora.startsWith(hora);
-
-        // 4. Filtro Camión (Por ID)
-        // h.camionAsignado suele ser el ID en el objeto de horario
-        const hCamionId = h.camionAsignado?._id || h.camionAsignado;
-        const matchCamion = !camionId || (hCamionId === camionId);
-
-        // 5. Filtro Conductor (Por ID)
-        const hConductorId = h.conductorAsignado?._id || h.conductorAsignado;
-        const matchConductor = !conductorId || (hConductorId === conductorId);
-
-        return matchRuta && matchDia && matchHora && matchCamion && matchConductor;
-      });
-
-      renderTablaHorarios(filtrados);
-      document.getElementById("search-horario-modal").classList.remove("modal-visible");
-    });
-  }
-
+  
   // --- CIERRE MODALES GENERAL ---
   window.onclick = (e) => {
       if(e.target.classList.contains("modal") || e.target.classList.contains("fullscreen-overlay")) {
