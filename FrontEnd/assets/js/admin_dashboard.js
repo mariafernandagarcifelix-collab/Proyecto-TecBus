@@ -1012,7 +1012,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function abrirEditarHorario(horarioId, salidaId) {
-    await popularDropdownsHorarios(true);
+    await popularDropdownsHorarios("editar");
     try {
       const res = await fetch(`${BACKEND_URL}/api/horarios/${horarioId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -1500,9 +1500,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(BACKEND_URL + "/api/notificaciones", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alertasCargadas = await response.json();
+      
+      // ✅ CORRECCIÓN: Guardamos en la variable global para que el buscador funcione
+      alertasCargadas = await response.json(); 
+      
       renderTablaAlertas(alertasCargadas);
-    } catch (e) {}
+    } catch (e) {
+        console.error("Error cargando alertas:", e);
+    }
   }
 
   const formSearchAlerta = document.getElementById("form-search-alerta");
@@ -1525,8 +1530,13 @@ document.addEventListener("DOMContentLoaded", () => {
         let matchFecha = true;
         if (fechaInput) {
             // Convertimos la fecha de la alerta (ISO string) a formato YYYY-MM-DD local
-            const fechaAlerta = new Date(a.createdAt).toISOString().split('T')[0];
-            matchFecha = fechaAlerta === fechaInput;
+            const d = new Date(a.createdAt);
+            const year = d.getFullYear();
+            const month =String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const fechaAlertaLocal = `${year}-${month}-${day}`;
+
+            matchFecha = fechaAlertaLocal === fechaInput;
         }
 
         return matchUnidad && matchTipo && matchFecha;
