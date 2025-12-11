@@ -390,7 +390,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const camiones = await response.json();
 
       camiones.forEach((camion) => {
-        if (camion.estado !== "activo" || !camion.ubicacionActual) return;
+        const estadosVisibles = ["activo", "En Servicio", "Abordando"];
+    
+        if (!estadosVisibles.includes(camion.estado) || !camion.ubicacionActual) {
+            return;
+        }
         const rutaId = camion.rutaAsignada ? camion.rutaAsignada._id : null;
 
         if (busMarkers[camion._id]) {

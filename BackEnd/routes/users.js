@@ -5,6 +5,7 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const Camion = require("../models/Camion");
+const Horario = require("../models/Horario");
 const bcrypt = require("bcryptjs");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 
@@ -66,21 +67,42 @@ router.post("/", protect, adminOnly, async (req, res) => {
 
 router.get("/mi-camion", protect, async (req, res) => {
   try {
-    // 1. IMPORTANTE: Populate debe coincidir con el nombre del campo en tu User.js
+    // 1. Primero buscamos si tiene asignación fija en su perfil
     const user = await User.findById(req.user._id).populate("conductor.vehiculoAsignado");
 
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    // 2. Extraemos el camión
-    const camion = user.conductor ? user.conductor.vehiculoAsignado : null;
+    let camion = user.conductor ? user.conductor.vehiculoAsignado : null;
 
-    // DEBUG: Esto aparecerá en tu terminal (la pantalla negra donde corre el servidor)
-    console.log(`[DEBUG] Chofer: ${user.nombre} | Camión detectado:`, camion ? camion._id : "NINGUNO");
+    // 2. Si NO tiene camión fijo, buscamos en los horarios de HOY
+    if (!camion) {
+        console.log(`[DEBUG] Conductor ${user.nombre} sin vehículo fijo. Buscando en horarios...`);
+        
+        // Calcular día de la semana en español
+        const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+        const hoy = dias[new Date().getDay()];
 
-    // 3. Si no hay camión o el populate falló (quedó solo el ID sin datos)
+        // Buscar un horario donde este usuario sea el conductor hoy
+        const horarioHoy = await Horario.findOne({
+            conductorAsignado: user._id,
+            $or: [
+                { diaSemana: hoy }, 
+                { diaSemana: "Diario" },
+                { diaSemana: "Lunes-Viernes" } // (Simplificado, idealmente validar si es L-V)
+            ]
+        }).populate("camionAsignado");
+
+        if (horarioHoy && horarioHoy.camionAsignado) {
+            camion = horarioHoy.camionAsignado;
+            console.log(`[DEBUG] ¡Camión encontrado por horario! Unidad: ${camion.numeroUnidad}`);
+        }
+    }
+
+    // 3. Respuesta Final
     if (!camion || !camion.numeroUnidad) {
+       // Si de plano no tiene ni fijo ni horario
        return res.json({
          camionId: null,
          placa: "",
@@ -88,7 +110,7 @@ router.get("/mi-camion", protect, async (req, res) => {
        });
     }
 
-    // 4. Éxito: Enviamos los datos
+    // ¡ÉXITO! Devolvemos los datos del camión encontrado
     res.json({
       camionId: camion._id,
       placa: camion.placa,

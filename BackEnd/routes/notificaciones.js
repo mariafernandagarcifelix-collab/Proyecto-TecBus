@@ -76,7 +76,7 @@ router.get("/mi-prediccion-prueba", protect, async (req, res) => {
     const payload = JSON.stringify({
       title: "🚍 Notificaciones TecBus",
       body: "Hola " + user.nombre.split(" ")[0] + ", las notificaciones han sido activadas correctamente.",
-      icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png" // Icono de bus
+      icon: "assets/img/Tecbus.png" // Icono de bus
     });
 
     // Enviamos la notificación

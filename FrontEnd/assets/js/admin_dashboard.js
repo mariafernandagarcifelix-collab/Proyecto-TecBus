@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Activar usuario al entrar (Lógica de V2)
   if(user && user.id) {
       fetch(`${BACKEND_URL}/api/users/${user.id}`, {
           method: 'PUT',
@@ -25,6 +26,16 @@ document.addEventListener("DOMContentLoaded", () => {
           },
           body: JSON.stringify({ estado: "activo" }) 
       }).catch(err => console.log("Error activando usuario al inicio", err));
+  }
+
+  // --- MOSTRAR FECHA ACTUAL (Recuperado de V1) ---
+  const currentDateEl = document.getElementById("current-date");
+  if (currentDateEl) {
+    currentDateEl.textContent = new Date().toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   }
 
   // --- Variables Globales de Datos ---
@@ -51,12 +62,16 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   //  DETECTOR DE CAMBIO DE PESTAÑA (Sincronización con Sidebar)
   // ============================================================
-  // Aquí escuchamos los clicks que maneja admin_sidebar.js para cargar los datos
   const navLinks = document.querySelectorAll(".nav-item");
   navLinks.forEach((link) => {
     link.addEventListener("click", (e) => {
       const targetId = link.getAttribute("href");
       
+      // Si es cerrar sesión, ejecutamos logout (Por si acaso está aquí el botón)
+      if(link.id === "btn-cerrar-sesion" || link.classList.contains("logout-item")) {
+          return; // La lógica de logout se maneja aparte o en sidebar.js
+      }
+
       // Cargar datos según la sección que el usuario eligió
       if (targetId === "#mapa") inicializarDashboard();
       if (targetId === "#usuarios") cargarUsuarios();
@@ -100,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function inicializarDashboard() {
     console.log("🔄 Cargando datos del dashboard...");
     
-    // 1. Camiones
+    // 1. Camiones (Lo usaremos para el KPI de Total)
     try {
       const res = await fetch(BACKEND_URL + "/api/camiones", {
         headers: { Authorization: `Bearer ${token}` },
@@ -109,9 +124,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const camiones = await res.json();
         camionesCargados = camiones;
 
+        // Limpiar y redibujar marcadores
         Object.values(busMarkers).forEach((m) => map.removeLayer(m));
         busMarkers = {};
         
+        // --- AQUÍ ACTUALIZAMOS EL KPI DE TOTAL DE CAMIONES ---
         const elTotal = document.getElementById("kpi-total-buses");
         if(elTotal) elTotal.textContent = camiones.length;
 
@@ -127,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (e) { console.error("Error camiones:", e); }
 
-    // 2. Conductores Activos
+    // 2. Conductores Activos (CORREGIDO)
     try {
       const res = await fetch(BACKEND_URL + "/api/users", {
         headers: { Authorization: `Bearer ${token}` },
@@ -135,9 +152,26 @@ document.addEventListener("DOMContentLoaded", () => {
       if (res.ok) {
         const users = await res.json();
         usuariosCargados = users;
-        const activos = users.filter((u) => u.tipo === "conductor" && u.estado === "En Servicio").length;
+
+        // --- CORRECCIÓN CLAVE: ACEPTAR MÁS ESTADOS ---
+        const conductoresActivos = users.filter((u) => {
+            if (u.tipo !== "conductor") return false;
+            
+            // Lista de estados que consideramos "Trabajando"
+            const estadosActivos = [
+                "En Servicio", 
+                "Abordando", 
+                "Inicio de Recorridos",
+                "En Ruta"
+            ];
+            
+            // Verificamos si el estado del usuario está en la lista
+            return estadosActivos.includes(u.estado);
+        });
+
+        // Actualizamos el KPI
         const elDrivers = document.getElementById("kpi-drivers-active");
-        if(elDrivers) elDrivers.textContent = activos;
+        if(elDrivers) elDrivers.textContent = conductoresActivos.length;
       }
     } catch (e) { console.error("Error usuarios:", e); }
 
@@ -148,6 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       if (res.ok) {
         const alerts = await res.json();
+        // Filtramos solo las de hoy o recientes si quieres, o todas
         alertCount = alerts.length;
         const elAlerts = document.getElementById("kpi-active-alerts");
         if(elAlerts) elAlerts.textContent = alertCount;
@@ -260,15 +295,13 @@ document.addEventListener("DOMContentLoaded", () => {
         // Lógica Especial Conductor: Depende del horario/servicio
         if (u.estado === "En Servicio") {
             estaActivo = true;
-            textoEstadoReal = "Activo"; // Aunque en BD diga "En Servicio", mostramos Activo
+            textoEstadoReal = "Activo"; 
         } else {
-            // "En Espera", "Fuera de Servicio", "Inactivo" -> Se consideran Inactivos
             estaActivo = false;
             textoEstadoReal = "Inactivo";
         }
       } else {
-        // Lógica Admin/Estudiante: Depende del Login/Logout (estado 'activo' o 'inactivo' en BD)
-        // Asumimos que tu sistema de login pone u.estado = 'activo'
+        // Lógica Admin/Estudiante
         if (u.estado === "activo" || u.estado === "online") {
             estaActivo = true;
             textoEstadoReal = "Activo";
@@ -448,7 +481,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tbody.innerHTML = "";
     
     if (lista.length === 0) {
-      tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron camiones.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5">No se encontraron camiones.</td></tr>';
       return;
     }
 
@@ -457,18 +490,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Lógica de Estado del Camión
       let estaActivo = false;
-      
-      // Si el estado interno es "En Servicio", visualmente es Activo
       if (c.estado === "En Servicio") {
           estaActivo = true;
       } 
-      // Si está "activo" (default de mongo), "mantenimiento", "En Espera", etc -> Inactivo visualmente
-      // Nota: Si quieres que 'activo' (disponible) se vea verde, cambia la condición.
-      // Pero según tu petición: "basarse en el horario... cuando este En Servicio estará Activo"
       
       const estadoHtml = estaActivo
-        ? `<span class="status-active">● Activo</span>`  // Se ve verde y dice Activo
-        : `<span class="status-inactive">● Inactivo</span>`; // Se ve rojo y dice Inactivo
+        ? `<span class="status-active">● Activo</span>`
+        : `<span class="status-inactive">● Inactivo</span>`; 
 
       row.innerHTML = `
           <td>${c.placa}</td>
@@ -502,14 +530,30 @@ document.addEventListener("DOMContentLoaded", () => {
   if (formSearchCamion) {
     formSearchCamion.addEventListener("submit", (e) => {
       e.preventDefault();
-      const unidad = document.getElementById("search-camion-unidad").value.toLowerCase();
       const placa = document.getElementById("search-camion-placa").value.toLowerCase();
+      const unidad = document.getElementById("search-camion-unidad").value.toLowerCase();
+      const modelo = document.getElementById("search-camion-modelo").value.toLowerCase();
+      const capacidad = document.getElementById("search-camion-capacidad").value;
       const estado = document.getElementById("search-camion-estado").value;
+
       const filtrados = camionesCargados.filter((c) => {
-        const matchUnidad = !unidad || c.numeroUnidad.toLowerCase().includes(unidad);
         const matchPlaca = !placa || c.placa.toLowerCase().includes(placa);
-        const matchEstado = !estado || c.estado === estado;
-        return matchUnidad && matchPlaca && matchEstado;
+        const matchUnidad = !unidad || c.numeroUnidad.toLowerCase().includes(unidad);
+        const matchModelo = !modelo || (c.modelo && c.modelo.toLowerCase().includes(modelo));
+        // Comparación flexible de capacidad (si escriben 40, busca los de 40)
+        const matchCapacidad = !capacidad || (c.capacidad && c.capacidad.toString() === capacidad);
+        //const matchEstado = !estado || c.estado === estado;
+
+        let matchEstado = true;
+        if (estado === "Activo") {
+            // Consideramos activo si está En Servicio
+            matchEstado = c.estado === "En Servicio";
+        } else if (estado === "Inactivo") {
+            // Consideramos inactivo cualquier otra cosa
+            matchEstado = c.estado !== "En Servicio";
+        }
+
+        return matchPlaca && matchUnidad && matchModelo && matchCapacidad && matchEstado;
       });
       renderTablaCamiones(filtrados);
       document.getElementById("search-camion-modal").classList.remove("modal-visible");
@@ -559,12 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-camion-placa").value = camion.placa;
     document.getElementById("edit-camion-unidad").value = camion.numeroUnidad;
     document.getElementById("edit-camion-modelo").value = camion.modelo || "";
-    const selRuta = document.getElementById("edit-camion-ruta");
-    selRuta.innerHTML = '<option value="">-- Sin Ruta --</option>';
-    rutasCargadas.forEach((r) => {
-      selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`;
-    });
-    selRuta.value = camion.rutaAsignada || "";
+    document.getElementById("edit-camion-capacidad").value = camion.capacidad || "";
     modalCamion.classList.add("modal-visible");
   }
 
@@ -591,7 +630,7 @@ document.addEventListener("DOMContentLoaded", () => {
         placa: document.getElementById("edit-camion-placa").value,
         numeroUnidad: document.getElementById("edit-camion-unidad").value,
         modelo: document.getElementById("edit-camion-modelo").value,
-        rutaAsignada: document.getElementById("edit-camion-ruta").value,
+        capacidad: document.getElementById("edit-camion-capacidad").value,
       };
       try {
         const response = await fetch(`${BACKEND_URL}/api/camiones/${id}`, {
@@ -821,19 +860,62 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {}
   }
 
+  // --- LÓGICA DE BÚSQUEDA DE HORARIOS CORREGIDA (VERSIÓN FINAL) ---
   const formSearchHorario = document.getElementById("form-search-horario");
   if (formSearchHorario) {
     formSearchHorario.addEventListener("submit", (e) => {
       e.preventDefault();
-      const ruta = document.getElementById("search-horario-ruta").value.toLowerCase();
-      const dia = document.getElementById("search-horario-dia").value;
-      const conductor = document.getElementById("search-horario-conductor").value.toLowerCase();
+      
+      // 1. OBTENER LOS TEXTOS SELECCIONADOS (No los valores/IDs)
+      const selRuta = document.getElementById("search-horario-ruta");
+      const textoRuta = selRuta.value ? selRuta.options[selRuta.selectedIndex].text : "";
+      
+      const selDia = document.getElementById("search-horario-dia");
+      const textoDia = selDia.value ? selDia.options[selDia.selectedIndex].text : "";
+
+      const horaInput = document.getElementById("search-horario-hora").value;
+
+      const selCamion = document.getElementById("search-horario-camion");
+      // El texto del camión suele ser "10 (ABC-123)", buscamos solo el número "10" o todo
+      const textoCamion = selCamion.value ? selCamion.options[selCamion.selectedIndex].text : "";
+
+      const selConductor = document.getElementById("search-horario-conductor");
+      const textoConductor = selConductor.value ? selConductor.options[selConductor.selectedIndex].text : "";
+
       const filtrados = horariosCargados.filter((h) => {
-        const matchRuta = !ruta || (h.rutaNombre && h.rutaNombre.toLowerCase().includes(ruta));
-        const matchDia = !dia || h.diaSemana === dia;
-        const matchCond = !conductor || (h.conductorNombre && h.conductorNombre.toLowerCase().includes(conductor));
-        return matchRuta && matchDia && matchCond;
+        // --- 1. RUTA ---
+        // Comparamos el nombre de la ruta que viene del backend vs el texto del select
+        const matchRuta = !textoRuta || (h.rutaNombre && h.rutaNombre.includes(textoRuta));
+
+        // --- 2. DÍA ---
+        // Aquí sí podemos usar el valor directo porque es estático (Lunes, Martes...)
+        const valDia = selDia.value;
+        const matchDia = !valDia || (h.diaSemana === valDia);
+
+        // --- 3. HORA ---
+        let matchHora = true;
+        if (horaInput) {
+            // Normalizamos "07:00" a "7:00" para comparar
+            const hHoraDB = h.hora ? h.hora.replace(/^0+/, '') : "";
+            const hHoraInput = horaInput.replace(/^0+/, '');
+            matchHora = hHoraDB.startsWith(hHoraInput);
+        }
+
+        // --- 4. CAMIÓN ---
+        // Comparamos el texto "Unidad 10" o "10" contra lo que hay en h.camionUnidad
+        const matchCamion = !textoCamion || (
+            h.camionUnidad && textoCamion.includes(h.camionUnidad.toString())
+        );
+
+        // --- 5. CONDUCTOR ---
+        // Comparamos el nombre "Juan Pérez" contra h.conductorNombre
+        const matchConductor = !textoConductor || (
+            h.conductorNombre && h.conductorNombre.toLowerCase().includes(textoConductor.toLowerCase())
+        );
+
+        return matchRuta && matchDia && matchHora && matchCamion && matchConductor;
       });
+
       renderTablaHorarios(filtrados);
       document.getElementById("search-horario-modal").classList.remove("modal-visible");
     });
@@ -852,39 +934,64 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  async function popularDropdownsHorarios(esEdicion = false) {
-    const suffix = esEdicion ? "edit-horario" : "horario";
-    const selRuta = document.getElementById(`${suffix}-ruta`);
-    const selCamion = document.getElementById(`${suffix}-camion`);
-    const selConductor = document.getElementById(`${suffix}-conductor`);
+  async function popularDropdownsHorarios(modo = 'registro') {
+    // Determinamos el prefijo según el modo
+    let prefix = "horario"; // Default (Registro)
+    if (modo === 'edicion') prefix = "edit-horario";
+    if (modo === 'busqueda') prefix = "search-horario";
+
+    const selRuta = document.getElementById(`${prefix}-ruta`);
+    const selCamion = document.getElementById(`${prefix}-camion`);
+    const selConductor = document.getElementById(`${prefix}-conductor`);
     
-    // Limpieza inicial
+    // Texto por defecto para la primera opción
+    const defaultText = modo === 'busqueda' ? "-- Todos --" : "-- Selecciona --";
+
+    // Limpieza inicial visual
     if(selRuta) selRuta.innerHTML = '<option>Cargando...</option>';
 
     try {
+      // Pedimos datos al servidor
       const [resRutas, resCamiones, resConductores] = await Promise.all([
         fetch(BACKEND_URL + "/api/rutas", { headers: { Authorization: `Bearer ${token}` } }),
         fetch(BACKEND_URL + "/api/camiones", { headers: { Authorization: `Bearer ${token}` } }),
         fetch(BACKEND_URL + "/api/users", { headers: { Authorization: `Bearer ${token}` } }),
       ]);
+
       const rutas = await resRutas.json();
       const camiones = await resCamiones.json();
       const usuarios = await resConductores.json();
       const conductores = usuarios.filter((u) => u.tipo === "conductor");
 
+      // 1. LLENAR RUTAS
       if (selRuta) {
-        selRuta.innerHTML = '<option value="">-- Ruta --</option>';
-        rutas.forEach(r => { if(r.activa) selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`; });
+        selRuta.innerHTML = `<option value="">${defaultText}</option>`;
+        rutas.forEach(r => { 
+            // En búsqueda mostramos todas, en registro solo activas
+            if(modo === 'busqueda' || r.activa) {
+                selRuta.innerHTML += `<option value="${r._id}">${r.nombre}</option>`; 
+            }
+        });
       }
+
+      // 2. LLENAR CAMIONES
       if (selCamion) {
-        selCamion.innerHTML = '<option value="">-- Camión --</option>';
-        camiones.forEach(c => { if(c.estado === "activo") selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad}</option>`; });
+        selCamion.innerHTML = `<option value="">${defaultText}</option>`;
+        camiones.forEach(c => { 
+             // En búsqueda mostramos todos, en registro solo activos
+             if(modo === 'busqueda' || c.estado === 'activo' || c.estado === 'En Servicio') {
+                 selCamion.innerHTML += `<option value="${c._id}">${c.numeroUnidad} (${c.placa})</option>`; 
+             }
+        });
       }
+
+      // 3. LLENAR CONDUCTORES
       if (selConductor) {
-        selConductor.innerHTML = '<option value="">-- Conductor --</option>';
+        selConductor.innerHTML = `<option value="">${defaultText}</option>`;
         conductores.forEach(c => selConductor.innerHTML += `<option value="${c._id}">${c.nombre}</option>`);
       }
-    } catch (e) { console.error(e); }
+
+    } catch (e) { console.error("Error cargando dropdowns:", e); }
   }
 
   async function abrirEditarHorario(horarioId, salidaId) {
@@ -1375,29 +1482,80 @@ document.addEventListener("DOMContentLoaded", () => {
   if (formSearchAlerta) {
     formSearchAlerta.addEventListener("submit", (e) => {
       e.preventDefault();
-      const unidad = document
-        .getElementById("search-alerta-unidad")
-        .value.toLowerCase();
-      const tipo = document
-        .getElementById("search-alerta-tipo")
-        .value.toLowerCase();
+      
+      const unidad = document.getElementById("search-alerta-unidad").value.toLowerCase();
+      const tipo = document.getElementById("search-alerta-tipo").value.toLowerCase();
+      const fechaInput = document.getElementById("search-alerta-fecha").value; // Formato YYYY-MM-DD
 
       const filtrados = alertasCargadas.filter((a) => {
-        const matchUnidad =
-          !unidad ||
-          (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
-        const matchTipo =
-          !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
-        return matchUnidad && matchTipo;
+        // 1. Filtro Unidad
+        const matchUnidad = !unidad || (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
+        
+        // 2. Filtro Tipo (Select)
+        const matchTipo = !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
+        
+        // 3. Filtro Fecha (Nuevo)
+        let matchFecha = true;
+        if (fechaInput) {
+            // Convertimos la fecha de la alerta (ISO string) a formato YYYY-MM-DD local
+            const fechaAlerta = new Date(a.createdAt).toISOString().split('T')[0];
+            matchFecha = fechaAlerta === fechaInput;
+        }
+
+        return matchUnidad && matchTipo && matchFecha;
       });
+
       renderTablaAlertas(filtrados);
-      document
-        .getElementById("search-alerta-modal")
-        .classList.remove("modal-visible");
+      document.getElementById("search-alerta-modal").classList.remove("modal-visible");
     });
   }
 
+  // --- FUNCIÓN GENÉRICA PARA ABRIR/CERRAR MODALES DE BÚSQUEDA ---
+  window.abrirModalBusqueda = function (tipo) {
+    if(tipo === 'horario') popularDropdownsHorarios('busqueda');
+      const modal = document.getElementById(`search-${tipo}-modal`);
+      if (modal) modal.classList.add("modal-visible");
+  };
 
+  if (formSearchHorario) {
+    formSearchHorario.addEventListener("submit", (e) => {
+      e.preventDefault();
+      
+      // Obtener valores de los Selects (IDs) y el Input Time
+      const rutaId = document.getElementById("search-horario-ruta").value;
+      const dia = document.getElementById("search-horario-dia").value;
+      const hora = document.getElementById("search-horario-hora").value;
+      const camionId = document.getElementById("search-horario-camion").value;
+      const conductorId = document.getElementById("search-horario-conductor").value;
+
+      const filtrados = horariosCargados.filter((h) => {
+        // 1. Filtro Ruta (Por ID o Nombre si el objeto no está poblado)
+        // h.ruta puede ser un objeto {_id: ...} o un string ID, dependiendo del backend
+        const hRutaId = h.ruta?._id || h.ruta; 
+        const matchRuta = !rutaId || (hRutaId === rutaId);
+
+        // 2. Filtro Día
+        const matchDia = !dia || h.diaSemana === dia;
+
+        // 3. Filtro Hora (Búsqueda parcial, ej: "07" encuentra "07:00", "07:30")
+        const matchHora = !hora || h.hora.startsWith(hora);
+
+        // 4. Filtro Camión (Por ID)
+        // h.camionAsignado suele ser el ID en el objeto de horario
+        const hCamionId = h.camionAsignado?._id || h.camionAsignado;
+        const matchCamion = !camionId || (hCamionId === camionId);
+
+        // 5. Filtro Conductor (Por ID)
+        const hConductorId = h.conductorAsignado?._id || h.conductorAsignado;
+        const matchConductor = !conductorId || (hConductorId === conductorId);
+
+        return matchRuta && matchDia && matchHora && matchCamion && matchConductor;
+      });
+
+      renderTablaHorarios(filtrados);
+      document.getElementById("search-horario-modal").classList.remove("modal-visible");
+    });
+  }
 
   // --- CIERRE MODALES GENERAL ---
   window.onclick = (e) => {
@@ -1425,4 +1583,45 @@ document.addEventListener("DOMContentLoaded", () => {
       if (form.id === "form-search-alerta") renderTablaAlertas(alertasCargadas);
     });
   });
+
+  cargarDashboardStats();
+
+    // Actualizar cada 30 segundos automáticamente
+    setInterval(cargarDashboardStats, 30000);
 });
+
+async function cargarDashboardStats() {
+    try {
+        const token = localStorage.getItem("tecbus_token");
+        const res = await fetch(`${BACKEND_URL}/api/camiones/estadisticas/hoy`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            
+            // 1. Actualizar Tarjetas (KPIs)
+            document.getElementById("kpi-total-km").textContent = `${data.resumen.totalKm} km`;
+            document.getElementById("kpi-max-speed").textContent = data.resumen.topVelocidad;
+            document.getElementById("kpi-active-units").textContent = data.resumen.totalUnidadesActivas;
+
+            // 2. Actualizar Tabla
+            const tbody = document.getElementById("stats-table-body");
+            tbody.innerHTML = ""; // Limpiar tabla
+            
+            data.detalles.forEach(d => {
+                const row = `
+                    <tr>
+                        <td><strong>${d.unidad}</strong></td>
+                        <td>${d.km} km</td>
+                        <td style="${d.velMax > 90 ? 'color:red' : ''}">${d.velMax} km/h</td>
+                        <td>${d.actualizado}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+    } catch (error) {
+        console.error("Error cargando stats:", error);
+    }
+}

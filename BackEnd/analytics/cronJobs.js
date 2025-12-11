@@ -8,6 +8,31 @@ const HistorialUbicacion = require("../models/HistorialUbicacion");
 const HistorialViaje = require("../models/HistorialBusqueda");
 const User = require("../models/User");     // <--- NUEVO: Importar User
 const Horario = require("../models/Horario"); // <--- NUEVO: Importar Horario
+const AnaliticaPrediccion = require("../models/AnaliticaPrediccion"); // <--- NUEVO IMPORT
+
+// --- Utilidad de Hora (Reutilizable) ---
+const obtenerHoraGuasave = () => {
+    const fechaActual = new Date();
+    const formateador = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Mazatlan",
+        hour12: false,
+        weekday: 'long',
+        hour: 'numeric',
+        minute: 'numeric'
+    });
+    
+    const partes = formateador.formatToParts(fechaActual);
+    const getVal = (k) => partes.find(p => p.type === k).value;
+
+    const horas = getVal('hour').padStart(2, '0');
+    const minutos = getVal('minute').padStart(2, '0');
+    
+    return {
+        diaIngles: getVal('weekday'),
+        horaTexto: `${horas}:${minutos}`, // Ejemplo: "07:30"
+        fechaObjeto: fechaActual
+    };
+};
 
 // --- ¡NUEVO! Lógica de la Consulta 3 extraída a su propia función ---
 const ejecutarAnalisisVelocidad = async () => {
@@ -236,6 +261,44 @@ const actualizarEstadoConductores = async () => {
   }
 };
 
+// --- 🤖 NUEVO: NOTIFICADOR INTELIGENTE ---
+const notificarPredicciones = async (io) => {
+    const { horaTexto } = obtenerHoraGuasave();
+    console.log(`--- 🤖 Verificando predicciones para la hora: ${horaTexto} ---`);
+
+    try {
+        // 1. Buscamos estudiantes cuya hora habitual sea AHORA MISMO
+        // Nota: En un sistema real, podrías buscar 15 minutos antes (horaTexto + 15min)
+        const predicciones = await AnaliticaPrediccion.find({
+            "prediccion.hora": horaTexto
+        }).populate("prediccion.ruta");
+
+        if (predicciones.length === 0) return;
+
+        console.log(`💡 Se encontraron ${predicciones.length} coincidencias de hábito.`);
+
+        // 2. Enviamos la notificación a cada uno
+        predicciones.forEach(p => {
+            if (p.prediccion && p.prediccion.ruta) {
+                const nombreRuta = p.prediccion.ruta.nombre;
+                
+                // Emitimos evento global, pero con el ID del usuario objetivo
+                // El frontend filtrará si el mensaje es para él.
+                io.emit("smartAlert", {
+                    userId: p._id.toString(), // ID del estudiante
+                    mensaje: `Hola ${p.nombreEstudiante}, el camión de la ruta "${nombreRuta}" de esta hora esta por llegar. ¡Preparate para abordar el camión!`,
+                    rutaId: p.prediccion.ruta._id
+                });
+                
+                console.log(`📨 Alerta enviada a ${p.nombreEstudiante} sobre ruta ${nombreRuta}`);
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Error en Notificador Inteligente:", error);
+    }
+};
+
 // --- Tareas Programadas (cron) ---
 
 // CONSULTA 3: Se ejecuta todos los días a las 3:00 AM
@@ -253,20 +316,22 @@ const jobEstadoConductores = cron.schedule("* * * * *", actualizarEstadoConducto
 
 // --- Función de Inicio ---
 
-const startAnalyticsJobs = () => {
+const startAnalyticsJobs = (io) => {
   console.log("⏰ Iniciando programador de tareas nocturnas...");
-  jobAnalisisVelocidad.start();
-  jobAnalisisHabitos.start();
-  jobEstadoConductores.start();
 
-  // Ejecutar inmediatamente al arrancar para corregir los datos actuales
-  actualizarEstadoConductores();
+  // 1. Análisis Pesados (Madrugada)
+  cron.schedule("0 3 * * *", ejecutarAnalisisVelocidad).start();
+  cron.schedule("0 4 * * *", ejecutarAnalisisHabitos).start();
 
-  // ¡¡AQUÍ ESTÁ LA CORRECCIÓN!!
-  // Llamamos a la función directamente
-  // (Comenta esto cuando termines de probar)
-  console.log("--- 🏃‍♂️ Forzando ejecución de Job de Hábitos AHORA ---");
-  ejecutarAnalisisHabitos();
+  // 2. Control de Estado Conductores (Cada minuto)
+  cron.schedule("* * * * *", actualizarEstadoConductores).start();
+
+  // 3. 🤖 Notificaciones Inteligentes (Cada minuto)
+  // Revisa si la hora actual coincide con la hora favorita de alguien
+  cron.schedule("* * * * *", () => notificarPredicciones(io)).start();
+
+  // Ejecución inicial de prueba (Opcional)
+  // actualizarEstadoConductores();
 };
 
 module.exports = { startAnalyticsJobs };

@@ -51,14 +51,15 @@ const userSchema = new mongoose.Schema({
       type: String,
       // 👇 AGREGAMOS AQUÍ LOS NUEVOS ESTADOS QUE USA EL CONDUCTOR
       enum: [
-          "activo", 
-          "inactivo", 
-          "En Servicio", 
-          "En Espera", 
-          "Fuera de Servicio", 
-          "Inicio de Recorridos"
+            'activo', 
+            'inactivo', 
+            'Inactivo', // Si quieres permitir mayúscula
+            'Inicio de Recorridos',
+            'En Servicio',
+            'En Espera',
+            'Fuera de Servicio'
       ],
-      default: "activo",
+      default: "inactivo",
     },
     pushSubscription: {
         type: Object, // Guardaremos el objeto JSON que nos da el navegador

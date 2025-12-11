@@ -3,9 +3,14 @@
 const express = require("express");
 const router = express.Router();
 const Camion = require("../models/Camion");
+const Horario = require('../models/Horario');
+const User = require('../models/User');
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 const HistorialBusqueda = require("../models/HistorialBusqueda");
 const Notificacion = require("../models/Notificacion");
+const UbicacionEnVivo = require("../models/UbicacionEnVivo");
+const HistorialUbicacion = require("../models/HistorialUbicacion");
+const EstadisticaDiaria = require("../models/EstadisticaDiaria");
 
 // ==================================================================
 //  RUTA ESPECIAL ESP32 — DEBE IR PRIMERO
@@ -13,40 +18,94 @@ const Notificacion = require("../models/Notificacion");
 router.put("/update-location", async (req, res) => {
   try {
     const { busId, lat, lng, speed } = req.body;
+    const ahora = new Date();
 
-    // 1. GUARDAR EN BD PRIMERO
-    const camion = await Camion.findOneAndUpdate(
-      { numeroUnidad: busId },
-      {
-        ubicacionActual: { type: "Point", coordinates: [lng, lat] }, // Mongo usa [Longitud, Latitud]
-        velocidad: speed,
-        ultimaActualizacion: new Date(),
-        estado: "activo",
-      },
-      { new: true } // Esto es vital: nos devuelve el dato YA GUARDADO
-    ).populate("rutaAsignada");
-
-    if (!camion) {
-      return res.status(404).json({ message: "Camión no encontrado" });
+    // 1. Validación básica
+    if (!busId || lat === undefined || lng === undefined) {
+      return res.status(400).json({ message: "Datos GPS incompletos" });
     }
 
-    // 2. EXTRAER DATOS REALES DE LA BD
-    // Si la BD guardó algo diferente o redondeó, esto es lo que veremos.
-    const coordenadasReales = camion.ubicacionActual.coordinates;
-    const latitudBD = coordenadasReales[1]; // En GeoJSON el índice 1 es latitud
-    const longitudBD = coordenadasReales[0]; // En GeoJSON el índice 0 es longitud
+    // 2. OBTENER UBICACIÓN ANTERIOR (Para calcular distancia recorrida)
+    // Antes de sobrescribir, necesitamos saber dónde estaba hace 10 segundos.
+    const ubicacionAnterior = await UbicacionEnVivo.findOne({ numeroUnidad: busId });
+    
+    let distanciaRecorrida = 0;
+    
+    if (ubicacionAnterior && ubicacionAnterior.ubicacion) {
+        const coordsAnt = ubicacionAnterior.ubicacion.coordinates; // [lng, lat]
+        // OJO: Mongo guarda [lng, lat], mi función usa (lat1, lon1, lat2, lon2)
+        distanciaRecorrida = getDistanceFromLatLonInM(
+            coordsAnt[1], coordsAnt[0], // Lat, Lng anteriores
+            lat, lng                    // Lat, Lng actuales
+        );
 
-    // 3. ENVIAR AL MAPA (Usando datos de BD)
+        // Filtro anti-ruido GPS: Si se movió más de 500m en segundos (teletransportación), ignorar distancia
+        // O si se movió menos de 3 metros (ruido estático), ignorar.
+        if (distanciaRecorrida > 1000 || distanciaRecorrida < 3) {
+            distanciaRecorrida = 0;
+        }
+    }
+
+    // 3. ACTUALIZAR "DATOS CALIENTES" (Live)
+    // Esto es lo que ve el mapa en tiempo real
+    const liveUpdate = await UbicacionEnVivo.findOneAndUpdate(
+      { numeroUnidad: busId },
+      {
+        $set: {
+            ubicacion: { type: "Point", coordinates: [lng, lat] },
+            velocidad: speed,
+            ultimaActualizacion: ahora,
+            numeroUnidad: busId,
+            // Podrías agregar aquí el estado si lo tuvieras (ej. "En Ruta")
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    // 4. GUARDAR HISTORIAL (Datos Fríos)
+    // Esto se guarda para siempre (o hasta que el TTL lo borre)
+    HistorialUbicacion.create({
+        camionId: liveUpdate.camionId, // ID autogenerado si era nuevo
+        numeroUnidad: busId,
+        ubicacion: { type: "Point", coordinates: [lng, lat] },
+        velocidad: speed,
+        timestamp: ahora
+    }).catch(err => console.error("⚠️ Error guardando historial:", err.message));
+
+    // 5. ACTUALIZAR ESTADÍSTICAS DIARIAS (Optimizado)
+    // Generamos la clave del día: "102_2023-10-27" (Zona Horaria Local aprox)
+    // Ajusta el offset de horas si tu servidor está en UTC y tú en México (-6h o -7h)
+    const fechaLocal = new Date(ahora.getTime() - (7 * 60 * 60 * 1000)); 
+    const fechaString = fechaLocal.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const claveStats = `${busId}_${fechaString}`;
+
+    await EstadisticaDiaria.updateOne(
+        { claveDiaria: claveStats },
+        {
+            $setOnInsert: { 
+                numeroUnidad: busId,
+                fecha: new Date(fechaString) 
+            },
+            $inc: { 
+                distanciaTotal: distanciaRecorrida, // Sumamos lo que recorrió desde el último punto
+                totalPuntosReportados: 1 
+            },
+            $max: { 
+                velocidadMaxima: speed // Solo actualiza si la nueva velocidad es mayor a la guardada
+            },
+            $set: { ultimaActualizacion: ahora }
+        },
+        { upsert: true }
+    ).catch(err => console.error("⚠️ Error guardando stats:", err.message));
+
+    // 6. ENVIAR SOCKET (Para el Frontend)
     const io = req.app.get("io");
     if (io) {
       io.emit("locationUpdate", {
-        camionId: camion._id,
-        numeroUnidad: camion.numeroUnidad,
-        location: { 
-            lat: latitudBD, 
-            lng: longitudBD 
-        },
-        velocidad: camion.velocidad, // Usamos la velocidad guardada
+        camionId: liveUpdate.camionId, // Útil para tu frontend
+        numeroUnidad: busId,
+        location: { lat, lng },
+        velocidad: speed,
       });
     }
 
@@ -116,6 +175,93 @@ router.put("/update-location", async (req, res) => {
     res.status(500).json({ message: "Error interno del servidor" });
   }
 });
+
+// ==================================================================
+//  RUTA INTELIGENTE: ASIGNACIÓN DINÁMICA POR HORARIO
+// ==================================================================
+router.get('/mi-unidad', protect, async (req, res) => {
+    try {
+        const idConductor = req.user._id; // Obtenemos ID del token (middleware protect)
+
+        // 1. Obtener Día y Hora Actual
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const fechaActual = new Date();
+        // Ajuste horario manual si tu servidor no está en la zona horaria correcta (opcional)
+        // fechaActual.setHours(fechaActual.getHours() - 7); 
+        
+        const diaActual = dias[fechaActual.getDay()];
+        const minutosActuales = fechaActual.getHours() * 60 + fechaActual.getMinutes();
+
+        console.log(`🔎 Buscando unidad para conductor ${idConductor} en día ${diaActual} a las ${fechaActual.getHours()}:${fechaActual.getMinutes()}`);
+
+        // 2. Buscar Horarios que coincidan con el día y contengan al conductor
+        // Nota: Buscamos en 'diaSemana' (puede ser "Lunes" o "lunes") y dentro del array 'salidas'
+        const horarios = await Horario.find({
+            $or: [{ diaSemana: diaActual }, { diaSemana: diaActual.toLowerCase() }],
+            "salidas.conductorAsignado": idConductor
+        }).populate({
+            path: 'salidas.camionAsignado',
+            model: 'Camion'
+        });
+
+        if (!horarios || horarios.length === 0) {
+            return res.status(404).json({ mensaje: "No tienes recorridos programados para hoy." });
+        }
+
+        // 3. Filtrar la salida más relevante (La que está ocurriendo o va a ocurrir pronto)
+        let camionEncontrado = null;
+        let rutaEncontrada = null;
+
+        // Aplanamos todas las salidas del conductor para hoy
+        let misSalidasHoy = [];
+        horarios.forEach(h => {
+            h.salidas.forEach(salida => {
+                if (salida.conductorAsignado.toString() === idConductor.toString()) {
+                    misSalidasHoy.push({
+                        ...salida.toObject(),
+                        rutaId: h.ruta
+                    });
+                }
+            });
+        });
+
+        // Buscamos la salida activa (Margen: desde 1 hora antes hasta 3 horas despues de la hora de salida)
+        for (const salida of misSalidasHoy) {
+            const [h, m] = salida.hora.split(':');
+            const minutosSalida = parseInt(h) * 60 + parseInt(m);
+
+            // RANGO: Si es desde 60 min antes hasta 180 min (3 horas) después del inicio
+            // Ejemplo: Salida 7:00am (420 min). Válido desde 6:00am (360) hasta 10:00am (600)
+            if (minutosActuales >= (minutosSalida - 60) && minutosActuales <= (minutosSalida + 180)) {
+                if (salida.camionAsignado) {
+                    camionEncontrado = salida.camionAsignado;
+                    // Rompemos el ciclo al encontrar la primera coincidencia válida actual
+                    break;
+                }
+            }
+        }
+
+        // 4. Si encontramos camión, devolvemos formato esperado por el frontend
+        if (camionEncontrado) {
+            return res.json({
+                camionId: camionEncontrado._id,
+                numeroUnidad: camionEncontrado.numeroUnidad,
+                placa: camionEncontrado.placa,
+                ubicacionActual: camionEncontrado.ubicacionActual,
+                velocidad: camionEncontrado.velocidad,
+                estado: "Asignado por Horario"
+            });
+        } else {
+            // Si tiene horarios hoy pero no es la hora todavía
+            return res.status(404).json({ mensaje: "Tienes viajes hoy, pero no en este horario." });
+        }
+
+    } catch (error) {
+        console.error("❌ Error buscando unidad dinámica:", error);
+        res.status(500).json({ mensaje: "Error al buscar la unidad del conductor" });
+    }
+});
+
 
 // ==================================================================
 //  RUTAS GENERALES (CRUD)
@@ -234,4 +380,53 @@ router.get("/:id", protect, async (req, res) => {
     res.status(500).json({ message: "Error en el servidor al consultar camión" });
   }
 });
+
+router.get("/estadisticas/hoy", protect, adminOnly, async (req, res) => {
+    try {
+        // 1. Calcular la fecha de hoy (sin hora) para buscar en la BD
+        const hoy = new Date();
+        // Ajuste manual de zona horaria si es necesario (ej. -7 horas para México)
+        const fechaLocal = new Date(hoy.getTime() - (7 * 60 * 60 * 1000));
+        const fechaString = fechaLocal.toISOString().split('T')[0]; // "2023-10-27"
+        const inicioDia = new Date(fechaString);
+
+        // 2. Buscar las estadísticas de HOY
+        const stats = await EstadisticaDiaria.find({ 
+            fecha: inicioDia 
+        }).sort({ distanciaTotal: -1 }); // Ordenar: el que más recorrió primero
+
+        // 3. Calcular Totales Generales (KPIs)
+        let totalKmFlota = 0;
+        let maxVelocidadFlota = 0;
+        let unidadMasVeloz = "N/A";
+
+        stats.forEach(s => {
+            totalKmFlota += s.distanciaTotal;
+            if (s.velocidadMaxima > maxVelocidadFlota) {
+                maxVelocidadFlota = s.velocidadMaxima;
+                unidadMasVeloz = s.numeroUnidad;
+            }
+        });
+
+        // 4. Enviar respuesta preparada para el Frontend
+        res.json({
+            resumen: {
+                totalKm: (totalKmFlota / 1000).toFixed(2), // Convertir a KM
+                topVelocidad: `${maxVelocidadFlota} km/h (Unidad ${unidadMasVeloz})`,
+                totalUnidadesActivas: stats.length
+            },
+            detalles: stats.map(s => ({
+                unidad: s.numeroUnidad,
+                km: (s.distanciaTotal / 1000).toFixed(2),
+                velMax: s.velocidadMaxima,
+                actualizado: s.ultimaActualizacion.toLocaleTimeString()
+            }))
+        });
+
+    } catch (error) {
+        console.error("Error obteniendo estadísticas:", error);
+        res.status(500).json({ message: "Error al cargar reporte" });
+    }
+});
+
 module.exports = router;

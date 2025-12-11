@@ -7,11 +7,13 @@ const salidaSchema = new mongoose.Schema({
   hora: { type: String, required: true }, // ej: "07:00"
   camionAsignado: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Camion", //
+    ref: "Camion", 
+    required: true//
   },
   conductorAsignado: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", //
+    ref: "User",
+    required: true //
   },
 });
 
@@ -26,19 +28,11 @@ const horarioSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
-        "lunes",
-        "martes",
-        "miercoles",
-        "jueves",
-        "viernes",
-        "sabado",
-        "domingo",
-      ], //
+        "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo",
+        "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"
+      ], 
     },
-    salidas: [salidaSchema],
-    agencia: { type: String },
-    validoDesde: { type: Date, default: Date.now },
-    validoHasta: { type: Date },
+    salidas: [salidaSchema]
   },
   {
     timestamps: true,

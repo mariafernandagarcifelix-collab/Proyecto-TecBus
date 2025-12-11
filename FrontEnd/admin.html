@@ -39,7 +39,18 @@
     <div class="admin-layout">
       <aside class="sidebar" id="sidebar">
         <div class="logo-area">
-          <i class="fas fa-shield-alt logo-icon"></i>
+          <img 
+          src="assets/img/TecBus.png" 
+          alt="Logo TecBus"
+          style="
+            width: 80px;        /* Ajusta este tamaño según prefieras */
+            height: auto; 
+            margin-bottom: 10px;
+            display: block;      /* Para asegurar que respete los márgenes */
+            margin-left: auto;  /* Centrado horizontal */
+            margin-right: auto; /* Centrado horizontal */
+          "
+        >
           <p>TECNM Admin</p>
           <p class="subtitle">Transporte Guasave</p>
         </div>
@@ -92,33 +103,91 @@
         </header>
 
         <section id="mapa" class="dashboard-section active">
-          <div class="kpi-cards">
-            <div class="card">
-              <div class="card-icon"><i class="fas fa-bus"></i></div>
-              <div class="card-title">Total de Camiones</div>
-              <div class="card-value" id="kpi-total-buses">4</div>
+          
+          <div class="kpi-grid-3">
+            <div class="stat-card blue-glow">
+              <div class="stat-icon"><i class="fas fa-user-graduate"></i></div>
+              <div class="stat-content">
+                <h3>Estudiantes Esperando</h3>
+                <p class="stat-value" id="kpi-students-waiting">0</p>
+              </div>
+              <div class="stat-decoration"></div>
             </div>
-            <div class="card">
-              <div class="card-icon"><i class="fas fa-user-graduate"></i></div>
-              <div class="card-title">Estudiantes en Espera</div>
-              <div class="card-value" id="kpi-students-waiting">3</div>
+            
+            <div class="stat-card purple-glow">
+              <div class="stat-icon"><i class="fas fa-id-card"></i></div>
+              <div class="stat-content">
+                <h3>Conductores Activos</h3>
+                <p class="stat-value" id="kpi-drivers-active">0</p>
+              </div>
+              <div class="stat-decoration"></div>
             </div>
-            <div class="card">
-              <div class="card-icon"><i class="fas fa-users-cog"></i></div>
-              <div class="card-title">Conductores Activos</div>
-              <div class="card-value" id="kpi-drivers-active">4</div>
-            </div>
-            <div class="card alert-card">
-              <div class="card-icon"><i class="fas fa-bell"></i></div>
-              <div class="card-title">Alertas Activas</div>
-              <div class="card-value" id="kpi-active-alerts">1</div>
+
+            <div class="stat-card red-glow alert-card">
+              <div class="stat-icon"><i class="fas fa-bell"></i></div>
+              <div class="stat-content">
+                <h3>Alertas del Sistema</h3>
+                <p class="stat-value" id="kpi-active-alerts">0</p>
+              </div>
+              <div class="stat-decoration"></div>
             </div>
           </div>
 
-          <div class="map-flotilla-container">
-            <h3>Mapa de Flotilla en Tiempo Real</h3>
-            <div id="admin-map" class="full-map"></div>
+          <div class="kpi-grid-3">
+            <div class="stat-card green-glow">
+                <div class="stat-icon"><i class="fas fa-route"></i></div>
+                <div class="stat-content">
+                   <h3>Recorrido Hoy</h3>
+                   <p class="stat-value" id="kpi-total-km">...</p>
+                </div>
+            </div>
+            
+            <div class="stat-card orange-glow">
+                <div class="stat-icon"><i class="fas fa-tachometer-alt"></i></div>
+                <div class="stat-content">
+                    <h3>Velocidad Máx</h3>
+                    <p class="stat-value" id="kpi-max-speed">--</p>
+                </div>
+            </div>
+
+            <div class="stat-card cyan-glow">
+              <div class="stat-icon"><i class="fas fa-bus"></i></div>
+              <div class="stat-content">
+                <h3>Total de Unidades</h3>
+                <p class="stat-value" id="kpi-total-buses">--</p>
+              </div>
+            </div>
           </div>
+
+          <div class="main-visualization-container">
+            <div class="side-panel">
+                <div class="panel-header">
+                    <h4><i class="fas fa-chart-bar"></i> Rendimiento</h4>
+                </div>
+                <div class="table-wrapper-compact">
+                    <table id="stats-table" class="compact-table">
+                        <thead>
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Km</th>
+                                <th>Vel.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="map-panel">
+                <div class="panel-header">
+                   <h4><i class="fas fa-satellite-dish"></i> Monitoreo Satelital</h4>
+                   <span class="live-indicator">EN VIVO</span>
+                </div>
+                <div id="admin-map" class="full-map-styled"></div>
+            </div>
+          </div>
+
         </section>
 
         <section id="usuarios" class="dashboard-section">
@@ -142,7 +211,7 @@
                   <input type="text" id="user-nombre" required />
                 </div>
                 <div class="form-group">
-                  <label for="user-email">Correo Institucional</label>
+                  <label for="user-email">Correo Electrónico</label>
                   <input type="email" id="user-email" required />
                 </div>
                 <div class="form-group">
@@ -497,10 +566,8 @@
               <input type="text" id="edit-camion-modelo" />
             </div>
             <div class="form-group">
-              <label for="edit-camion-ruta">Ruta Asignada</label>
-              <select id="edit-camion-ruta">
-                <option value="">-- Sin Ruta --</option>
-              </select>
+              <label for="edit-camion-capacidad">Capacidad (Pasajeros)</label>
+              <input type="number" id="edit-camion-capacidad" required min="1" />
             </div>
 
             <div class="modal-actions">
@@ -699,21 +766,32 @@
             <h2><i class="fas fa-search"></i> Buscar Camión</h2>
             <form id="form-search-camion">
                 <div class="form-group">
-                    <label>Número de Unidad</label>
-                    <input type="text" id="search-camion-unidad" placeholder="Ej. TEC-01">
+                  <label for="search-camion-placa">Placa</label>
+                  <input type="text" id="search-camion-placa" placeholder="Ej: VXS-123" />
                 </div>
+
                 <div class="form-group">
-                    <label>Placa</label>
-                    <input type="text" id="search-camion-placa" placeholder="Ej. ABC-123">
+                  <label for="search-camion-unidad">Número de Unidad</label>
+                  <input type="text" id="search-camion-unidad" placeholder="Ej: 10" />
                 </div>
+
                 <div class="form-group">
-                    <label>Estado</label>
-                    <select id="search-camion-estado">
-                        <option value="">-- Todos --</option>
-                        <option value="activo">Activo</option>
-                        <option value="mantenimiento">Mantenimiento</option>
-                        <option value="inactivo">Inactivo</option>
-                    </select>
+                  <label for="search-camion-modelo">Modelo</label>
+                  <input type="text" id="search-camion-modelo" placeholder="Ej: Mercedes" />
+                </div>
+
+                <div class="form-group">
+                  <label for="search-camion-capacidad">Capacidad</label>
+                  <input type="number" id="search-camion-capacidad" placeholder="Ej: 40" />
+                </div>
+
+                <div class="form-group">
+                  <label for="search-camion-estado">Estado</label>
+                  <select id="search-camion-estado">
+                    <option value="">-- Todos --</option>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
                 </div>
 
                 <div class="modal-actions">
@@ -757,8 +835,11 @@
             <form id="form-search-horario">
                 <div class="form-group">
                     <label>Ruta</label>
-                    <input type="text" id="search-horario-ruta" placeholder="Nombre de ruta...">
+                    <select id="search-horario-ruta">
+                        <option value="">-- Todas --</option>
+                        </select>
                 </div>
+
                 <div class="form-group">
                     <label>Día</label>
                     <select id="search-horario-dia">
@@ -770,11 +851,28 @@
                         <option value="Viernes">Viernes</option>
                         <option value="Sábado">Sábado</option>
                         <option value="Domingo">Domingo</option>
+                        <option value="Lunes-Viernes">Lunes a Viernes</option>
+                        <option value="Diario">Diario</option>
                     </select>
                 </div>
+
+                <div class="form-group">
+                    <label>Hora Aproximada</label>
+                    <input type="time" id="search-horario-hora">
+                </div>
+
+                <div class="form-group">
+                    <label>Camión</label>
+                    <select id="search-horario-camion">
+                        <option value="">-- Todos --</option>
+                         </select>
+                </div>
+
                 <div class="form-group">
                     <label>Conductor</label>
-                    <input type="text" id="search-horario-conductor" placeholder="Nombre conductor...">
+                    <select id="search-horario-conductor">
+                        <option value="">-- Todos --</option>
+                         </select>
                 </div>
 
                 <div class="modal-actions">
@@ -791,12 +889,27 @@
             <h2><i class="fas fa-search"></i> Buscar Alerta</h2>
             <form id="form-search-alerta">
                 <div class="form-group">
-                    <label>Unidad / Camión</label>
+                    <label>Camión (Unidad)</label>
                     <input type="text" id="search-alerta-unidad" placeholder="Ej. TEC-01">
                 </div>
-                <div class="form-group">
-                    <label>Tipo de Alerta</label>
-                    <input type="text" id="search-alerta-tipo" placeholder="Ej. Retraso, Accidente...">
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tipo de Alerta</label>
+                        <select id="search-alerta-tipo">
+                            <option value="">-- Todos --</option>
+                            <option value="retraso">Retraso</option>
+                            <option value="accidente">Accidente</option>
+                            <option value="falla mecánica">Falla Mecánica</option>
+                            <option value="tráfico">Tráfico Pesado</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="search-alerta-fecha">
+                    </div>
                 </div>
 
                 <div class="modal-actions">

@@ -34,7 +34,18 @@
     <div id="sidebar" class="sidebar">
         <div class="logo-area">
             <button class="sidebar-close-btn" id="btn-menu-close"><i class="fas fa-times"></i></button>
-            <i class="fas fa-bus" style="font-size: 2rem; color: var(--color-primario); margin-bottom:10px;"></i>
+            <img 
+          src="assets/img/TecBus.png" 
+          alt="Logo TecBus"
+          style="
+            width: 80px;        /* Ajusta este tamaño según prefieras */
+            height: auto; 
+            margin-bottom: 10px;
+            display: block;      /* Para asegurar que respete los márgenes */
+            margin-left: auto;  /* Centrado horizontal */
+            margin-right: auto; /* Centrado horizontal */
+          "
+        >
             <h2>TecBus</h2>
             <p>Conductor</p>
         </div>
@@ -96,6 +107,7 @@
           <option value="Trafico">Tráfico Pesado</option>
           <option value="Accidente">Accidente en Vía</option>
           <option value="Bloqueo">Calle Bloqueada</option>
+          <option value="Falla">Falla Mecánica</option>
           <option value="Otro">Otro Retraso</option>
         </select>
         <textarea id="incident-details" placeholder="Detalles..."></textarea>
