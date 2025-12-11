@@ -232,6 +232,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+
+  window.abrirModalBusqueda = function(tipo) {
+      if (tipo === 'horario') {
+          popularDropdownsHorarios('buscar');
+      }
+      const modal = document.getElementById(`search-${tipo}-modal`);
+      if (modal) modal.classList.add("modal-visible");
+  };
+
+  // Cerrar cualquier modal con la X o botón cerrar
+  document.addEventListener("click", (e) => {
+      // Cerrar con botón X o Cancelar
+      if (e.target.matches(".close-button") || e.target.matches(".btn-secondary")) {
+          const modal = e.target.closest(".modal");
+          const overlay = e.target.closest(".fullscreen-overlay");
+          if (modal) modal.classList.remove("modal-visible");
+          if (overlay) overlay.classList.remove("active");
+          // Si es botón limpiar/cancelar de búsqueda, reseteamos el form
+          if (e.target.classList.contains("btn-reset-search")) {
+             const form = e.target.closest("form");
+             if(form) form.reset();
+             // Recargar tabla completa
+             if(form.id.includes("usuario")) renderTablaUsuarios(usuariosCargados);
+             if(form.id.includes("camion")) renderTablaCamiones(camionesCargados);
+             if(form.id.includes("ruta")) renderTablaRutas(rutasCargadas);
+             if(form.id.includes("horario")) renderTablaHorarios(horariosCargados);
+             if(form.id.includes("alerta")) renderTablaAlertas(alertasCargadas);
+          }
+      }
+      // Cerrar al dar click fuera (backdrop)
+      if (e.target.classList.contains("modal")) {
+          e.target.classList.remove("modal-visible");
+      }
+  });
+
+
   // ============================================================
   //  4. CRUD USUARIOS
   // ============================================================
@@ -1083,6 +1119,28 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   });
 
+  // 1. Icono de Estudiante
+const studentIconAdmin = L.divIcon({
+    className: "student-marker-admin",
+    html: `<div style="background-color: #0dcaf0; color: white; width: 25px; height: 25px; border-radius: 50%; border: 2px solid white; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"><i class="fas fa-user"></i></div>`,
+    iconSize: [25, 25],
+    iconAnchor: [12, 12]
+});
+
+// 2. Escuchar evento
+socket.on("studentWaiting", (data) => {
+    console.log("Admin: Estudiante esperando", data);
+
+    const marker = L.marker([data.location.lat, data.location.lng], { icon: studentIconAdmin })
+        .addTo(map) // Asegúrate que tu variable de mapa se llame 'map'
+        .bindPopup(`<strong>Estudiante esperando</strong><br>Ruta: ${data.rutaId}`);
+
+    // Limpiar después de 5 min
+    setTimeout(() => {
+        if (map.hasLayer(marker)) map.removeLayer(marker);
+    }, 300000);
+});
+
   // ============================================================
   //  8. EDITOR DE RUTAS (MAPA)
   // ============================================================
@@ -1510,63 +1568,67 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- BÚSQUEDA DE ALERTAS (CORREGIDO) ---
+  // --- LÓGICA DE BÚSQUEDA DE ALERTAS (CORREGIDA) ---
   const formSearchAlerta = document.getElementById("form-search-alerta");
+  
   if (formSearchAlerta) {
     formSearchAlerta.addEventListener("submit", (e) => {
-      e.preventDefault();
+      // 1. ESTA LÍNEA ES LA QUE EVITA LA RECARGA DE PÁGINA
+      e.preventDefault(); 
       
+      // 2. Obtener valores
       const unidad = document.getElementById("search-alerta-unidad").value.toLowerCase();
       const tipo = document.getElementById("search-alerta-tipo").value.toLowerCase();
-      const fechaInput = document.getElementById("search-alerta-fecha").value; // Formato YYYY-MM-DD
+      const fechaInput = document.getElementById("search-alerta-fecha").value; // YYYY-MM-DD
 
+      // 3. Filtrar
       const filtrados = alertasCargadas.filter((a) => {
-        // 1. Filtro Unidad
+        // Filtro Unidad
         const matchUnidad = !unidad || (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
         
-        // 2. Filtro Tipo (Select)
+        // Filtro Tipo (Select)
         const matchTipo = !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
         
-        // 3. Filtro Fecha (Nuevo)
+        // Filtro Fecha (Compara solo la parte de la fecha, ignorando la hora)
         let matchFecha = true;
         if (fechaInput) {
-            // Convertimos la fecha de la alerta (ISO string) a formato YYYY-MM-DD local
-            const d = new Date(a.createdAt);
-            const year = d.getFullYear();
-            const month =String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const fechaAlertaLocal = `${year}-${month}-${day}`;
-
-            matchFecha = fechaAlertaLocal === fechaInput;
+            // Convertimos la fecha de la alerta (ISO) a formato local YYYY-MM-DD para comparar
+            // Nota: Usamos split('T')[0] para tomar solo la fecha de la base de datos
+            const fechaAlerta = new Date(a.createdAt).toISOString().split('T')[0];
+            matchFecha = fechaAlerta === fechaInput;
         }
 
         return matchUnidad && matchTipo && matchFecha;
       });
 
+      // 4. Renderizar y cerrar
       renderTablaAlertas(filtrados);
       document.getElementById("search-alerta-modal").classList.remove("modal-visible");
     });
+  } else {
+      console.error("No se encontró el formulario 'form-search-alerta'. Revisa el HTML.");
   }
-
   // --- FUNCIÓN GENÉRICA PARA ABRIR/CERRAR MODALES DE BÚSQUEDA ---
   window.abrirModalBusqueda = function (tipo) {
-    if(tipo === 'horario') popularDropdownsHorarios('busqueda');
+    if(tipo === 'horario') popularDropdownsHorarios('buscar');
       const modal = document.getElementById(`search-${tipo}-modal`);
       if (modal) modal.classList.add("modal-visible");
   };
 
   
   // --- CIERRE MODALES GENERAL ---
-  window.onclick = (e) => {
-      if(e.target.classList.contains("modal") || e.target.classList.contains("fullscreen-overlay")) {
-          e.target.classList.remove("modal-visible");
-      }
-  };
-  document.querySelectorAll(".close-button").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-          e.target.closest(".modal")?.classList.remove("modal-visible");
-          e.target.closest(".fullscreen-overlay")?.classList.remove("modal-visible");
-      });
-  });
+  // window.onclick = (e) => {
+  //     if(e.target.classList.contains("modal") || e.target.classList.contains("fullscreen-overlay")) {
+  //         e.target.classList.remove("modal-visible");
+  //     }
+  // };
+  // document.querySelectorAll(".close-button").forEach(btn => {
+  //     btn.addEventListener("click", (e) => {
+  //         e.target.closest(".modal")?.classList.remove("modal-visible");
+  //         e.target.closest(".fullscreen-overlay")?.classList.remove("modal-visible");
+  //     });
+  // });
 
   // Botones Limpiar Búsqueda
   document.querySelectorAll(".btn-reset-search").forEach((btn) => {

@@ -446,34 +446,67 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- BOTÓN ESTOY AQUÍ ---
   const btnEstoyAqui = document.getElementById("btn-estoy-aqui");
+  
   if (btnEstoyAqui) {
     btnEstoyAqui.addEventListener("click", () => {
+      // 1. Validaciones de la Versión 2 (Más limpias)
       if (!window.isSecureContext && location.hostname !== "localhost") {
-        alert("⚠️ GPS requiere HTTPS o localhost."); return;
+        alert("⚠️ GPS requiere HTTPS o localhost."); 
+        return;
       }
-      if (!("geolocation" in navigator)) { alert("❌ Sin soporte GPS."); return; }
+      if (!("geolocation" in navigator)) { 
+        alert("❌ Sin soporte GPS."); 
+        return; 
+      }
 
+      // UI de carga
       const textoOriginal = btnEstoyAqui.innerHTML;
-      btnEstoyAqui.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
+      btnEstoyAqui.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Obteniendo ubicación...';
       btnEstoyAqui.disabled = true;
 
       navigator.geolocation.getCurrentPosition(
+        // --- CASO DE ÉXITO (Versión 2) ---
         (position) => {
           const myPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+          
           socket.emit("studentAtStop", {
             userId: user.id || user._id,
             rutaId: currentRouteId || "SIN_RUTA",
             location: myPos,
           });
-          alert(`✅ Ubicación enviada.`);
+
+          alert(`✅ Ubicación enviada al conductor.`);
+          
+          // Restaurar botón
           btnEstoyAqui.innerHTML = textoOriginal;
           btnEstoyAqui.disabled = false;
         },
+        
+        // --- MANEJO DE ERRORES (Traído de la Versión 1) ---
         (error) => {
-          alert("❌ Error obteniendo ubicación.");
+          console.warn("Error GPS:", error);
+          let mensajeError = "No se pudo obtener la ubicación.";
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              mensajeError = "⛔ Permiso denegado. Debes habilitar la ubicación en el icono del candado 🔒 de la barra de dirección.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              mensajeError = "📡 La señal GPS es débil o no está disponible (¿Estás bajo techo?).";
+              break;
+            case error.TIMEOUT:
+              mensajeError = "⏳ Se agotó el tiempo de espera para obtener el GPS.";
+              break;
+          }
+
+          alert(`❌ Error: ${mensajeError}`);
+
+          // Restaurar botón (Importante: mantener esto para que no se quede pegado)
           btnEstoyAqui.innerHTML = textoOriginal;
           btnEstoyAqui.disabled = false;
         },
+        
+        // Opciones de GPS
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     });

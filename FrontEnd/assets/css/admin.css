@@ -1268,3 +1268,55 @@
     border-style: solid;
     border-color: #ffc107 transparent transparent transparent;
 }
+
+
+/* --- AGREGAR AL FINAL DE admin.css --- */
+
+@media screen and (max-width: 900px) {
+    
+    /* 1. Layout General (Sidebar + Contenido) */
+    .admin-container {
+        grid-template-columns: 1fr; /* Sidebar desaparece o se va arriba */
+        display: block; 
+    }
+
+    /* Sidebar Admin en móvil (Estilo Header o Hamburguesa) */
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 10px;
+        display: flex;
+        overflow-x: auto; /* Scroll horizontal para iconos */
+        white-space: nowrap;
+    }
+
+    .admin-content {
+        padding: 15px;
+    }
+
+    /* 2. Grid de Estadísticas (Cards) */
+    .stats-grid {
+        grid-template-columns: 1fr; /* Una sola columna */
+        gap: 15px;
+    }
+
+    /* 3. Tablas Responsivas */
+    /* Envuelve tus tablas en un div .table-responsive si no lo has hecho */
+    table {
+        display: block;
+        width: 100%;
+        overflow-x: auto; /* Scroll horizontal vital para tablas */
+        white-space: nowrap;
+    }
+    
+    /* 4. Formularios */
+    .form-row {
+        flex-direction: column; /* Inputs uno debajo del otro */
+    }
+    
+    .form-group {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}

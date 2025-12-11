@@ -175,7 +175,16 @@ io.on("connection", (socket) => {
   });
 
   socket.on("studentAtStop", (data) => {
-    io.emit("studentWaiting", data);
+    console.log("📍 Estudiante esperando:", data);
+    
+    // IMPORTANTE: Usar io.emit para que le llegue a TODOS (Conductores, Admins y el mismo estudiante)
+    // O socket.broadcast.emit para que le llegue a todos MENOS al que lo envió.
+      io.emit("studentWaiting", {
+          userId: data.userId,
+          rutaId: data.rutaId,
+          location: data.location,
+          timestamp: new Date()
+      });
   });
 
   socket.on("disconnect", () => {

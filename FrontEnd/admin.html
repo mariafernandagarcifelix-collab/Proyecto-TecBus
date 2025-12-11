@@ -34,6 +34,7 @@
           ? "http://localhost:5000"
           : `http://${location.hostname}:5000`;
     </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   </head>
   <body>
     <div class="admin-layout">
@@ -98,7 +99,7 @@
           </div>
           <div class="header-info">
             <span id="current-date">31 de Octubre, 2025</span>
-            <i class="fas fa-user-circle profile-icon"></i>
+            <!-- <i class="fas fa-user-circle profile-icon"></i> -->
           </div>
         </header>
 
@@ -460,11 +461,12 @@
         <section id="alertas" class="dashboard-section">
           <div class="table-container">
             <div class="table-header-flex">
-                <h3>Historial de Alertas</h3>
-                <button class="btn-search-trigger" onclick="abrirModalBusqueda('alerta')">
-                  <i class="fas fa-search"></i> Buscar
-              </button>
-            </div>
+              <h3>Historial de Alertas</h3>
+              <div class="table-header-flex">
+                <button type="button" class="btn-search-trigger" onclick="abrirModalBusqueda('alerta')">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+              </div>
             <table class="data-table">
               <thead>
                 <tr>
@@ -478,6 +480,47 @@
             </table>
           </div>
         </section>
+
+        <div id="search-alerta-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2><i class="fas fa-search"></i> Buscar Alerta</h2>
+            <form id="form-search-alerta">
+                
+                <div class="form-group">
+                    <label>Unidad / Camión</label>
+                    <select id="search-alerta-unidad">
+                        <option value="">-- Todos --</option>
+                        </select>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tipo de Alerta</label>
+                        <select id="search-alerta-tipo">
+                            <option value="">-- Todos --</option>
+                            <option value="retraso">Retraso</option>
+                            <option value="accidente">Accidente</option>
+                            <option value="falla mecánica">Falla Mecánica</option>
+                            <option value="tráfico">Tráfico Pesado</option>
+                            <option value="emergencia médica">Emergencia Médica</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="search-alerta-fecha">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
+                </div>
+            </form>
+        </div>
+      </div>
 
         <section id="configuracion" class="dashboard-section">
           <div class="form-container">

@@ -999,3 +999,70 @@ header {
     }
     .instruction-card { min-height: auto; }
 }
+
+
+/* --- AGREGAR AL FINAL DE student.css --- */
+
+/* TABLETS Y MOVILES (max-width: 768px) */
+@media screen and (max-width: 768px) {
+    
+    /* 1. Ajuste del Sidebar (Menú lateral) */
+    #sidebar {
+        width: 85%; /* En vez de ancho fijo, ocupa casi toda la pantalla */
+        max-width: 300px;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* 2. Botón de menú hamburguesa */
+    #btn-menu-toggle {
+        top: 15px;
+        left: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem; /* Más grande para el dedo */
+    }
+
+    /* 3. Botones Flotantes (Estoy aquí, Historial) */
+    .map-overlay-buttons {
+        bottom: 20px;
+        right: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-float {
+        width: 50px;
+        height: 50px; /* Botones más fáciles de tocar */
+        font-size: 1.2rem;
+    }
+
+    /* Si el botón tiene texto, lo ocultamos en móvil para ahorrar espacio, o lo hacemos más pequeño */
+    #btn-estoy-aqui {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* 4. Modales (Perfil, Historial) */
+    .modal-content {
+        width: 95%; /* Ocupar casi todo el ancho */
+        margin: 10% auto; /* Centrado vertical */
+        max-height: 85vh; /* Evitar que se salga de la pantalla */
+        overflow-y: auto; /* Scroll interno si es muy largo */
+        padding: 15px;
+    }
+
+    /* 5. Calendario Fullscreen */
+    #calendario-semanal {
+        grid-template-columns: 1fr; /* Una columna en vez de varias */
+        gap: 10px;
+    }
+    
+    .day-card {
+        min-height: auto; /* Altura flexible */
+    }
+}
