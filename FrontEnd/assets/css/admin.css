@@ -262,252 +262,71 @@
   }
 }
 
-/* =======================================================
-   NUEVOS ESTILOS KPI Y DASHBOARD (REEMPLAZO VISUAL)
-   ======================================================= */
-
-/* =======================================================
-   NUEVO DISEÑO DE DASHBOARD (KPIs + MAPA)
-   ======================================================= */
-
-/* --- Grid de 3 Columnas --- */
-.kpi-grid-3 {
+.kpi-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsivo */
-  gap: 20px;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 15px; 
   margin-bottom: 20px;
 }
-
-@media (min-width: 1024px) {
-  .kpi-grid-3 {
-    grid-template-columns: repeat(3, 1fr); /* Forzar 3 columnas en pantallas grandes */
+.card {
+  background-color: var(--color-superficie);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-secundario);
+}
+.card-icon {
+  font-size: 1.8rem; 
+  color: var(--color-primario);
+  margin-bottom: 10px;
+}
+.card.alert-card .card-icon {
+  color: var(--color-error);
+  animation: pulse 1.5s infinite;
+}
+.card-title {
+  font-size: 0.8rem;
+  color: var(--color-texto-gris);
+  margin-bottom: 5px;
+}
+.card-value {
+  font-size: 2rem; 
+  font-weight: 600;
+  color: var(--color-texto-claro);
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
-/* --- Tarjeta KPI Estilizada --- */
-.stat-card {
-  background: #1e1e24; /* Fondo oscuro elegante */
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-}
-
-/* Decoración de fondo (Glow) */
-.stat-decoration {
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 150px;
-  height: 150px;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  opacity: 0.5;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-/* Iconos con fondo */
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 14px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.8rem;
-  margin-right: 20px;
-  flex-shrink: 0;
-  color: #fff;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-
-/* Textos */
-.stat-content h3 {
-  margin: 0 0 5px 0;
-  font-size: 0.85rem;
-  color: #a0a0a0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
-
-.stat-value {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1;
-}
-
-/* --- Variantes de Color (Iconos y Bordes sutiles) --- */
-.blue-glow { border-left: 4px solid #4facfe; }
-.blue-glow .stat-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-
-.purple-glow { border-left: 4px solid #a18cd1; }
-.purple-glow .stat-icon { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
-
-.red-glow { border-left: 4px solid #ff0844; }
-.red-glow .stat-icon { background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); }
-
-.green-glow { border-left: 4px solid #0ba360; }
-.green-glow .stat-icon { background: linear-gradient(135deg, #0ba360 0%, #3cba92 100%); }
-
-.orange-glow { border-left: 4px solid #ff9a9e; }
-.orange-glow .stat-icon { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); }
-
-.cyan-glow { border-left: 4px solid #00c6fb; }
-.cyan-glow .stat-icon { background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%); }
-
-/* Animación para alertas activas */
-.alert-card .stat-value {
-    color: #ff6b6b;
-    text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
-}
-
-/* --- Layout Inferior (Tabla + Mapa) --- */
-.main-visualization-container {
-    display: grid;
-    grid-template-columns: 350px 1fr; /* Tabla fija a 350px, mapa ocupa el resto */
-    gap: 20px;
-    height: 550px; /* Altura fija para el bloque */
-}
-
-/* En móviles, uno debajo del otro */
-@media (max-width: 1100px) {
-    .main-visualization-container {
-        grid-template-columns: 1fr;
-        height: auto;
-    }
-}
-
-/* Paneles contenedores */
-.side-panel, .map-panel {
-    background: #1e1e24;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.panel-header {
-    padding: 15px 20px;
-    background: rgba(0,0,0,0.2);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.panel-header h4 {
-    margin: 0;
-    font-size: 1rem;
-    color: #eee;
-    font-weight: 600;
-}
-
-/* Tabla Compacta */
-.table-wrapper-compact {
-    overflow-y: auto;
-    flex-grow: 1;
-}
-
-.compact-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.compact-table th {
-    background: #25252b;
-    position: sticky;
-    top: 0;
-    text-align: left;
-    padding: 12px 15px;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    color: #888;
-}
-.compact-table td {
-    padding: 12px 15px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 0.9rem;
-    color: #ddd;
-}
-.compact-table tr:hover {
-    background: rgba(255,255,255,0.03);
-}
-
-/* Mapa Estilizado */
-.full-map-styled {
-    width: 100%;
-    height: 100%; /* Llena el contenedor */
-    min-height: 400px;
-    z-index: 1;
-}
-
-.live-indicator {
-    font-size: 0.7rem;
-    background: #ff0844;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-    animation: blink 1.5s infinite;
-}
-
-@keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.4; }
-    100% { opacity: 1; }
-}
-/* Estilo del contenedor del Mapa */
+/* --- Contenedor del Mapa (Móvil) --- */
 .map-flotilla-container {
-    padding: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  background-color: var(--color-superficie);
+  padding: 15px; 
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-secundario);
 }
-
-.map-header-simple {
-    padding: 15px 20px;
-    background-color: rgba(0,0,0,0.2);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.map-flotilla-container h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.1rem; 
+  color: var(--color-texto-claro);
 }
-.map-header-simple h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #fff;
-}
-.live-badge {
-    background-color: var(--color-error);
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-    animation: blink 2s infinite;
-}
-@keyframes blink {
-    50% { opacity: 0.5; }
-}
-
 .full-map {
-    width: 100%;
-    height: 500px; /* Altura fija para el mapa */
-    border-radius: 0 0 12px 12px;
+  height: 400px; 
+  width: 100%;
+  border-radius: 8px;
+  background-color: #333;
 }
+
 /* ----------------------------------------------------- */
 /* 4. Componentes (Mobile First) */
 /* ----------------------------------------------------- */
