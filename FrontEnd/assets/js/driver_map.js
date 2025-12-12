@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const userString = localStorage.getItem("tecbus_user");
 
   if (!token || !userString) {
-    window.location.href = "index.html";
+    window.location.href = "login.html";
     return;
   }
 
@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (user.tipo !== "conductor") {
     alert("Acceso denegado. No eres conductor.");
-    window.location.href = "index.html";
+    window.location.href = "login.html";
     return;
   }
 
@@ -1005,7 +1005,7 @@ socket.on("studentWaiting", (data) => {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
       localStorage.removeItem("tecbus_token");
       localStorage.removeItem("tecbus_user");
-      window.location.href = "index.html";
+      window.location.href = "login.html";
     }
   }
 

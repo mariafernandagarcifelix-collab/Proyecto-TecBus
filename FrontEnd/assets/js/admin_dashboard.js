@@ -5,13 +5,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("tecbus_token");
   const userString = localStorage.getItem("tecbus_user");
   if (!token || !userString) {
-    window.location.href = "index.html";
+    window.location.href = "login.html";
     return;
   }
   const user = JSON.parse(userString);
   if (user.tipo !== "administrador") {
     alert("Acceso denegado.");
-    window.location.href = "index.html";
+    window.location.href = "login.html";
     return;
   }
 

@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.location.href = "admin.html";
             break;
           default:
-            window.location.href = "index.html"; // Fallback
+            window.location.href = "login.html"; // Fallback
         }
       }, 1000); // Pequeña espera para que el usuario vea el mensaje
     } catch (error) {

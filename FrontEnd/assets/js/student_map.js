@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const userString = localStorage.getItem("tecbus_user");
 
   if (!token || !userString) {
-    window.location.href = "index.html";
+    window.location.href = "login.html";
     return;
   }
 
@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }).finally(() => {
           localStorage.removeItem("tecbus_token");
           localStorage.removeItem("tecbus_user");
-          window.location.href = "index.html";
+          window.location.href = "login.html";
       });
     }
   }

@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       setTimeout(() => {
-        window.location.href = "index.html";
+        window.location.href = "login.html";
       }, 2000);
     } catch (error) {
       if (messageEl) messageEl.textContent = error.message;
