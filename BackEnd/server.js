@@ -26,8 +26,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Permite conexiones desde cualquier IP (importante para el celular)
+    origin: "*", // 👈 El asterisco significa "Aceptar todo"
     methods: ["GET", "POST"],
+    // credentials: true <--- IMPORTANTE: Si usas "*", BORRA o comenta esta línea.
+    // "credentials: true" y "origin: *" son incompatibles en algunos navegadores.
   },
 });
 
@@ -61,7 +63,7 @@ app.use("/api/rutas", rutaRoutes);
 app.use("/api/horarios", horarioRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
-app.use('/api/historial', historialRoutes);
+app.use("/api/historial", historialRoutes);
 
 // 6. LÓGICA DE SOCKET.IO (TIEMPO REAL)
 io.on("connection", (socket) => {
@@ -75,7 +77,9 @@ io.on("connection", (socket) => {
       if (mongoose.Types.ObjectId.isValid(data.camionId)) {
         idParaActualizar = data.camionId;
       } else {
-        const camionEncontrado = await Camion.findOne({ numeroUnidad: data.camionId });
+        const camionEncontrado = await Camion.findOne({
+          numeroUnidad: data.camionId,
+        });
         if (camionEncontrado) idParaActualizar = camionEncontrado._id;
       }
 
@@ -89,28 +93,33 @@ io.on("connection", (socket) => {
               coordinates: [data.location.lng, data.location.lat],
             },
             ultimaActualizacion: Date.now(),
-            estado: "activo"
+            estado: "activo",
           },
           { new: true } // Importante: devuelve el documento actualizado
         );
 
         // 2. ENVIAR AL MAPA (Solo si se guardó)
-        if (camion && camion.ubicacionActual && camion.ubicacionActual.coordinates) {
-          
+        if (
+          camion &&
+          camion.ubicacionActual &&
+          camion.ubicacionActual.coordinates
+        ) {
           // Extraemos coordenadas EXCLUSIVAMENTE de la base de datos
           const [lngBD, latBD] = camion.ubicacionActual.coordinates;
 
           io.emit("locationUpdate", {
             camionId: camion._id,
             numeroUnidad: camion.numeroUnidad,
-            location: { 
-                lat: latBD, 
-                lng: lngBD 
+            location: {
+              lat: latBD,
+              lng: lngBD,
             },
-            heading: data.heading || 0
+            heading: data.heading || 0,
           });
-          
-          console.log(`📡 Ubicación actualizada desde BD para ${camion.numeroUnidad}: [${latBD}, ${lngBD}]`);
+
+          console.log(
+            `📡 Ubicación actualizada desde BD para ${camion.numeroUnidad}: [${latBD}, ${lngBD}]`
+          );
         }
       }
     } catch (error) {
@@ -134,19 +143,24 @@ io.on("connection", (socket) => {
         camionEncontrado = await Camion.findById(data.camionId);
       } else {
         // Si nos mandaron texto (ej: "TEC-01"), buscamos por número o placa
-        camionEncontrado = await Camion.findOne({ 
-            $or: [{ numeroUnidad: data.camionId }, { placa: data.camionId }] 
+        camionEncontrado = await Camion.findOne({
+          $or: [{ numeroUnidad: data.camionId }, { placa: data.camionId }],
         });
       }
 
       // PASO 2: Preparar datos según lo encontrado
       if (camionEncontrado) {
-          console.log("✅ [DEBUG] Camión identificado:", camionEncontrado.numeroUnidad);
-          idParaGuardar = camionEncontrado._id; // El ID hexadecimal para la BD
-          nombreParaMostrar = camionEncontrado.numeroUnidad; // El nombre corto para la Alerta
+        console.log(
+          "✅ [DEBUG] Camión identificado:",
+          camionEncontrado.numeroUnidad
+        );
+        idParaGuardar = camionEncontrado._id; // El ID hexadecimal para la BD
+        nombreParaMostrar = camionEncontrado.numeroUnidad; // El nombre corto para la Alerta
       } else {
-          console.warn("⚠️ [DEBUG] Camión no encontrado en BD. Se guardará sin vínculo.");
-          // No asignamos idParaGuardar para evitar el CastError
+        console.warn(
+          "⚠️ [DEBUG] Camión no encontrado en BD. Se guardará sin vínculo."
+        );
+        // No asignamos idParaGuardar para evitar el CastError
       }
 
       // PASO 3: Guardar en Base de Datos
@@ -156,7 +170,7 @@ io.on("connection", (socket) => {
         mensaje: data.detalles || "Sin detalles adicionales",
         prioridad: "alta",
         camionId: idParaGuardar, // Puede ser el ID o null (nunca un string inválido)
-        fecha: new Date()
+        fecha: new Date(),
       });
       console.log("💾 [DEBUG] Notificación guardada en MongoDB");
 
@@ -165,10 +179,9 @@ io.on("connection", (socket) => {
         tipo: data.tipo,
         detalles: data.detalles,
         camionId: nombreParaMostrar, // Aquí mandamos el texto legible (ej: "TEC-01")
-        hora: new Date()
+        hora: new Date(),
       });
       console.log("📡 [DEBUG] Alerta emitida a los administradores");
-
     } catch (error) {
       console.error("❌ [ERROR CRÍTICO] Fallo al procesar incidente:", error);
     }
@@ -176,15 +189,15 @@ io.on("connection", (socket) => {
 
   socket.on("studentAtStop", (data) => {
     console.log("📍 Estudiante esperando:", data);
-    
+
     // IMPORTANTE: Usar io.emit para que le llegue a TODOS (Conductores, Admins y el mismo estudiante)
     // O socket.broadcast.emit para que le llegue a todos MENOS al que lo envió.
-      io.emit("studentWaiting", {
-          userId: data.userId,
-          rutaId: data.rutaId,
-          location: data.location,
-          timestamp: new Date()
-      });
+    io.emit("studentWaiting", {
+      userId: data.userId,
+      rutaId: data.rutaId,
+      location: data.location,
+      timestamp: new Date(),
+    });
   });
 
   socket.on("disconnect", () => {

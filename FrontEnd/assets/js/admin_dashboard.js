@@ -1,7 +1,6 @@
 // frontend/assets/js/admin_dashboard.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  
   // --- 1. VERIFICACIÓN DE SEGURIDAD ---
   const token = localStorage.getItem("tecbus_token");
   const userString = localStorage.getItem("tecbus_user");
@@ -17,15 +16,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Activar usuario al entrar (Lógica de V2)
-  if(user && user.id) {
-      fetch(`${BACKEND_URL}/api/users/${user.id}`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify({ estado: "activo" }) 
-      }).catch(err => console.log("Error activando usuario al inicio", err));
+  if (user && user.id) {
+    fetch(`${BACKEND_URL}/api/users/${user.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ estado: "activo" }),
+    }).catch((err) => console.log("Error activando usuario al inicio", err));
   }
 
   // --- MOSTRAR FECHA ACTUAL (Recuperado de V1) ---
@@ -50,14 +49,26 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Configuración Inicial ---
   // Lugares clave para el buscador
   const LUGARES_CLAVE = [
-    { nombre: "Instituto Tecnológico Superior de Guasave (TEC)", lat: 25.523708, lon: -108.382035, tipo: "escuela" },
-    { nombre: "Central Camionera Regional de Guasave", lat: 25.570119, lon: -108.473013, tipo: "estacion" },
+    {
+      nombre: "Instituto Tecnológico Superior de Guasave (TEC)",
+      lat: 25.523708,
+      lon: -108.382035,
+      tipo: "escuela",
+    },
+    {
+      nombre: "Central Camionera Regional de Guasave",
+      lat: 25.570119,
+      lon: -108.473013,
+      tipo: "estacion",
+    },
     { nombre: "Rochin", lat: 25.579152, lon: -108.462641, tipo: "tienda" },
   ];
 
   // Conexión Socket
   const socket = io(SOCKET_URL);
-  socket.on("connect", () => console.log("🔌 Admin Dashboard conectado a Socket.io:", socket.id));
+  socket.on("connect", () =>
+    console.log("🔌 Admin Dashboard conectado a Socket.io:", socket.id)
+  );
 
   // ============================================================
   //  DETECTOR DE CAMBIO DE PESTAÑA (Sincronización con Sidebar)
@@ -66,10 +77,13 @@ document.addEventListener("DOMContentLoaded", () => {
   navLinks.forEach((link) => {
     link.addEventListener("click", (e) => {
       const targetId = link.getAttribute("href");
-      
+
       // Si es cerrar sesión, ejecutamos logout (Por si acaso está aquí el botón)
-      if(link.id === "btn-cerrar-sesion" || link.classList.contains("logout-item")) {
-          return; // La lógica de logout se maneja aparte o en sidebar.js
+      if (
+        link.id === "btn-cerrar-sesion" ||
+        link.classList.contains("logout-item")
+      ) {
+        return; // La lógica de logout se maneja aparte o en sidebar.js
       }
 
       // Cargar datos según la sección que el usuario eligió
@@ -78,8 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (targetId === "#camiones") cargarCamiones();
       if (targetId === "#rutas") cargarRutas();
       if (targetId === "#horarios") {
-          cargarHorarios();
-          popularDropdownsHorarios();
+        cargarHorarios();
+        popularDropdownsHorarios();
       }
       if (targetId === "#alertas") cargarAlertas();
     });
@@ -91,9 +105,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   //  3. LÓGICA DEL MAPA
   // ============================================================
-  const initialLat = 25.567, initialLng = -108.473, initialZoom = 13;
+  const initialLat = 25.567,
+    initialLng = -108.473,
+    initialZoom = 13;
   const map = L.map("admin-map").setView([initialLat, initialLng], initialZoom);
-  
+
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     attribution: "&copy; OpenStreetMap &copy; CARTO",
   }).addTo(map);
@@ -114,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- FUNCIÓN PRINCIPAL DASHBOARD (KPIs y Mapa) ---
   async function inicializarDashboard() {
     console.log("🔄 Cargando datos del dashboard...");
-    
+
     // 1. Camiones (Lo usaremos para el KPI de Total)
     try {
       const res = await fetch(BACKEND_URL + "/api/camiones", {
@@ -127,22 +143,26 @@ document.addEventListener("DOMContentLoaded", () => {
         // Limpiar y redibujar marcadores
         Object.values(busMarkers).forEach((m) => map.removeLayer(m));
         busMarkers = {};
-        
+
         // --- AQUÍ ACTUALIZAMOS EL KPI DE TOTAL DE CAMIONES ---
         const elTotal = document.getElementById("kpi-total-buses");
-        if(elTotal) elTotal.textContent = camiones.length;
+        if (elTotal) elTotal.textContent = camiones.length;
 
         camiones.forEach((c) => {
           if (c.ubicacionActual && c.ubicacionActual.coordinates) {
             const [lng, lat] = c.ubicacionActual.coordinates;
             const m = L.marker([lat, lng], { icon: busIcon })
               .addTo(map)
-              .bindPopup(`🚍 <b>${c.numeroUnidad}</b><br>Vel: ${c.velocidad || 0} km/h`);
+              .bindPopup(
+                `🚍 <b>${c.numeroUnidad}</b><br>Vel: ${c.velocidad || 0} km/h`
+              );
             busMarkers[c._id] = m;
           }
         });
       }
-    } catch (e) { console.error("Error camiones:", e); }
+    } catch (e) {
+      console.error("Error camiones:", e);
+    }
 
     // 2. Conductores Activos (CORREGIDO)
     try {
@@ -155,25 +175,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // --- CORRECCIÓN CLAVE: ACEPTAR MÁS ESTADOS ---
         const conductoresActivos = users.filter((u) => {
-            if (u.tipo !== "conductor") return false;
-            
-            // Lista de estados que consideramos "Trabajando"
-            const estadosActivos = [
-                "En Servicio", 
-                "Abordando", 
-                "Inicio de Recorridos",
-                "En Ruta"
-            ];
-            
-            // Verificamos si el estado del usuario está en la lista
-            return estadosActivos.includes(u.estado);
+          if (u.tipo !== "conductor") return false;
+
+          // Lista de estados que consideramos "Trabajando"
+          const estadosActivos = [
+            "En Servicio",
+            "Abordando",
+            "Inicio de Recorridos",
+            "En Ruta",
+          ];
+
+          // Verificamos si el estado del usuario está en la lista
+          return estadosActivos.includes(u.estado);
         });
 
         // Actualizamos el KPI
         const elDrivers = document.getElementById("kpi-drivers-active");
-        if(elDrivers) elDrivers.textContent = conductoresActivos.length;
+        if (elDrivers) elDrivers.textContent = conductoresActivos.length;
       }
-    } catch (e) { console.error("Error usuarios:", e); }
+    } catch (e) {
+      console.error("Error usuarios:", e);
+    }
 
     // 3. Alertas
     try {
@@ -185,9 +207,11 @@ document.addEventListener("DOMContentLoaded", () => {
         // Filtramos solo las de hoy o recientes si quieres, o todas
         alertCount = alerts.length;
         const elAlerts = document.getElementById("kpi-active-alerts");
-        if(elAlerts) elAlerts.textContent = alertCount;
+        if (elAlerts) elAlerts.textContent = alertCount;
       }
-    } catch (e) { console.error("Error alertas:", e); }
+    } catch (e) {
+      console.error("Error alertas:", e);
+    }
   }
 
   const kpiStudents = document.getElementById("kpi-students-waiting");
@@ -208,65 +232,72 @@ document.addEventListener("DOMContentLoaded", () => {
   socket.on("newIncidentAlert", (data) => {
     alert(`🚨 ¡NUEVO INCIDENTE!\nCamión: ${data.camionId}\nTipo: ${data.tipo}`);
     alertCount++;
-    if(kpiAlerts) kpiAlerts.textContent = alertCount;
+    if (kpiAlerts) kpiAlerts.textContent = alertCount;
 
     const marker = busMarkers[data.camionId];
     if (marker) {
       marker.setIcon(alertIcon);
-      marker.bindPopup(`🚨 <b>ALERTA: ${data.tipo}</b><br>${data.detalles || ""}`).openPopup();
+      marker
+        .bindPopup(`🚨 <b>ALERTA: ${data.tipo}</b><br>${data.detalles || ""}`)
+        .openPopup();
     }
   });
 
   socket.on("studentWaiting", (data) => {
     console.log("🙋‍♂️ Estudiante esperando:", data);
     studentCount++;
-    if(kpiStudents) kpiStudents.textContent = studentCount;
+    if (kpiStudents) kpiStudents.textContent = studentCount;
 
     if (data.location && data.location.lat && data.location.lng) {
-        L.circle([data.location.lat, data.location.lng], {
-          color: "var(--color-exito)",
-          fillColor: "#2ecc71",
-          fillOpacity: 0.5,
-          radius: 30,
-        }).addTo(map).bindPopup(`<b>Estudiante Esperando</b><br>Hora: ${new Date().toLocaleTimeString()}`);
+      L.circle([data.location.lat, data.location.lng], {
+        color: "var(--color-exito)",
+        fillColor: "#2ecc71",
+        fillOpacity: 0.5,
+        radius: 30,
+      })
+        .addTo(map)
+        .bindPopup(
+          `<b>Estudiante Esperando</b><br>Hora: ${new Date().toLocaleTimeString()}`
+        );
     }
   });
 
-
-  window.abrirModalBusqueda = function(tipo) {
-      if (tipo === 'horario') {
-          popularDropdownsHorarios('buscar');
-      }
-      const modal = document.getElementById(`search-${tipo}-modal`);
-      if (modal) modal.classList.add("modal-visible");
+  window.abrirModalBusqueda = function (tipo) {
+    if (tipo === "horario") {
+      popularDropdownsHorarios("buscar");
+    }
+    const modal = document.getElementById(`search-${tipo}-modal`);
+    if (modal) modal.classList.add("modal-visible");
   };
 
   // Cerrar cualquier modal con la X o botón cerrar
   document.addEventListener("click", (e) => {
-      // Cerrar con botón X o Cancelar
-      if (e.target.matches(".close-button") || e.target.matches(".btn-secondary")) {
-          const modal = e.target.closest(".modal");
-          const overlay = e.target.closest(".fullscreen-overlay");
-          if (modal) modal.classList.remove("modal-visible");
-          if (overlay) overlay.classList.remove("active");
-          // Si es botón limpiar/cancelar de búsqueda, reseteamos el form
-          if (e.target.classList.contains("btn-reset-search")) {
-             const form = e.target.closest("form");
-             if(form) form.reset();
-             // Recargar tabla completa
-             if(form.id.includes("usuario")) renderTablaUsuarios(usuariosCargados);
-             if(form.id.includes("camion")) renderTablaCamiones(camionesCargados);
-             if(form.id.includes("ruta")) renderTablaRutas(rutasCargadas);
-             if(form.id.includes("horario")) renderTablaHorarios(horariosCargados);
-             if(form.id.includes("alerta")) renderTablaAlertas(alertasCargadas);
-          }
+    // Cerrar con botón X o Cancelar
+    if (
+      e.target.matches(".close-button") ||
+      e.target.matches(".btn-secondary")
+    ) {
+      const modal = e.target.closest(".modal");
+      const overlay = e.target.closest(".fullscreen-overlay");
+      if (modal) modal.classList.remove("modal-visible");
+      if (overlay) overlay.classList.remove("active");
+      // Si es botón limpiar/cancelar de búsqueda, reseteamos el form
+      if (e.target.classList.contains("btn-reset-search")) {
+        const form = e.target.closest("form");
+        if (form) form.reset();
+        // Recargar tabla completa
+        if (form.id.includes("usuario")) renderTablaUsuarios(usuariosCargados);
+        if (form.id.includes("camion")) renderTablaCamiones(camionesCargados);
+        if (form.id.includes("ruta")) renderTablaRutas(rutasCargadas);
+        if (form.id.includes("horario")) renderTablaHorarios(horariosCargados);
+        if (form.id.includes("alerta")) renderTablaAlertas(alertasCargadas);
       }
-      // Cerrar al dar click fuera (backdrop)
-      if (e.target.classList.contains("modal")) {
-          e.target.classList.remove("modal-visible");
-      }
+    }
+    // Cerrar al dar click fuera (backdrop)
+    if (e.target.classList.contains("modal")) {
+      e.target.classList.remove("modal-visible");
+    }
   });
-
 
   // ============================================================
   //  4. CRUD USUARIOS
@@ -275,9 +306,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalFormUser = document.getElementById("form-edit-user");
   const closeModalBtnUser = modalUser?.querySelector(".close-button");
   const camposConductorEdit = document.getElementById("campos-conductor");
-  const formRegistrarUsuario = document.getElementById("form-registrar-usuario");
+  const formRegistrarUsuario = document.getElementById(
+    "form-registrar-usuario"
+  );
   const userTipoSelect = document.getElementById("user-tipo");
-  const camposConductorNew = document.getElementById("new-user-conductor-fields");
+  const camposConductorNew = document.getElementById(
+    "new-user-conductor-fields"
+  );
 
   // Lógica campos dinámicos
   if (userTipoSelect) {
@@ -293,7 +328,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const editUserTipoSelect = document.getElementById("edit-user-tipo");
   if (editUserTipoSelect) {
     editUserTipoSelect.addEventListener("change", (e) => {
-      if (e.target.value === "conductor") camposConductorEdit.style.display = "block";
+      if (e.target.value === "conductor")
+        camposConductorEdit.style.display = "block";
       else camposConductorEdit.style.display = "none";
     });
   }
@@ -330,20 +366,20 @@ document.addEventListener("DOMContentLoaded", () => {
       if (u.tipo === "conductor") {
         // Lógica Especial Conductor: Depende del horario/servicio
         if (u.estado === "En Servicio") {
-            estaActivo = true;
-            textoEstadoReal = "Activo"; 
+          estaActivo = true;
+          textoEstadoReal = "Activo";
         } else {
-            estaActivo = false;
-            textoEstadoReal = "Inactivo";
+          estaActivo = false;
+          textoEstadoReal = "Inactivo";
         }
       } else {
         // Lógica Admin/Estudiante
         if (u.estado === "activo" || u.estado === "online") {
-            estaActivo = true;
-            textoEstadoReal = "Activo";
+          estaActivo = true;
+          textoEstadoReal = "Activo";
         } else {
-            estaActivo = false;
-            textoEstadoReal = "Inactivo";
+          estaActivo = false;
+          textoEstadoReal = "Inactivo";
         }
       }
 
@@ -368,7 +404,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function cargarUsuarios() {
     const tablaBody = document.getElementById("tabla-usuarios-body");
-    if (tablaBody) tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+    if (tablaBody)
+      tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
       const response = await fetch(BACKEND_URL + "/api/users", {
         headers: { Authorization: `Bearer ${token}` },
@@ -377,7 +414,8 @@ document.addEventListener("DOMContentLoaded", () => {
       usuariosCargados = await response.json();
       renderTablaUsuarios(usuariosCargados);
     } catch (error) {
-      if (tablaBody) tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
+      if (tablaBody)
+        tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${error.message}</td></tr>`;
     }
   }
 
@@ -386,20 +424,27 @@ document.addEventListener("DOMContentLoaded", () => {
   if (formSearchUsuario) {
     formSearchUsuario.addEventListener("submit", (e) => {
       e.preventDefault();
-      const nombre = document.getElementById("search-user-nombre").value.toLowerCase();
-      const email = document.getElementById("search-user-email").value.toLowerCase();
+      const nombre = document
+        .getElementById("search-user-nombre")
+        .value.toLowerCase();
+      const email = document
+        .getElementById("search-user-email")
+        .value.toLowerCase();
       const tipo = document.getElementById("search-user-tipo").value;
       const estado = document.getElementById("search-user-estado").value;
 
       const filtrados = usuariosCargados.filter((user) => {
-        const matchNombre = !nombre || user.nombre.toLowerCase().includes(nombre);
+        const matchNombre =
+          !nombre || user.nombre.toLowerCase().includes(nombre);
         const matchEmail = !email || user.email.toLowerCase().includes(email);
         const matchTipo = !tipo || user.tipo === tipo;
         const matchEstado = !estado || (user.estado || "activo") === estado;
         return matchNombre && matchEmail && matchTipo && matchEstado;
       });
       renderTablaUsuarios(filtrados);
-      document.getElementById("search-usuario-modal").classList.remove("modal-visible");
+      document
+        .getElementById("search-usuario-modal")
+        .classList.remove("modal-visible");
     });
   }
 
@@ -420,7 +465,10 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const response = await fetch(BACKEND_URL + "/api/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (!response.ok) throw new Error("Error registro");
@@ -428,7 +476,9 @@ document.addEventListener("DOMContentLoaded", () => {
         formRegistrarUsuario.reset();
         camposConductorNew.style.display = "none";
         cargarUsuarios();
-      } catch (error) { alert(error.message); }
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
@@ -453,14 +503,17 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-user-tipo").value = user.tipo;
     if (user.tipo === "conductor") {
       camposConductorEdit.style.display = "block";
-      document.getElementById("edit-user-licencia").value = user.conductor?.licencia || "No";
+      document.getElementById("edit-user-licencia").value =
+        user.conductor?.licencia || "No";
     } else {
       camposConductorEdit.style.display = "none";
     }
     modalUser.classList.add("modal-visible");
   }
 
-  if (closeModalBtnUser) closeModalBtnUser.onclick = () => modalUser.classList.remove("modal-visible");
+  if (closeModalBtnUser)
+    closeModalBtnUser.onclick = () =>
+      modalUser.classList.remove("modal-visible");
 
   if (modalFormUser) {
     modalFormUser.addEventListener("submit", async (e) => {
@@ -478,15 +531,20 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const response = await fetch(`${BACKEND_URL}/api/users/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (!response.ok) throw new Error("Error actualización");
         alert("¡Usuario actualizado!");
         modalUser.classList.remove("modal-visible");
         cargarUsuarios();
-        inicializarDashboard(); 
-      } catch (error) { alert(error.message); }
+        inicializarDashboard();
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
@@ -501,7 +559,9 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("✅ Usuario eliminado");
       cargarUsuarios();
       inicializarDashboard();
-    } catch (error) { alert(error.message); }
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
   // ============================================================
@@ -515,9 +575,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const tbody = document.getElementById("tabla-camiones-body");
     if (!tbody) return;
     tbody.innerHTML = "";
-    
+
     if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5">No se encontraron camiones.</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="5">No se encontraron camiones.</td></tr>';
       return;
     }
 
@@ -527,12 +588,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // Lógica de Estado del Camión
       let estaActivo = false;
       if (c.estado === "En Servicio") {
-          estaActivo = true;
-      } 
-      
+        estaActivo = true;
+      }
+
       const estadoHtml = estaActivo
         ? `<span class="status-active">● Activo</span>`
-        : `<span class="status-inactive">● Inactivo</span>`; 
+        : `<span class="status-inactive">● Inactivo</span>`;
 
       row.innerHTML = `
           <td>${c.placa}</td>
@@ -540,8 +601,12 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${c.modelo || "N/A"}</td>
           <td>${estadoHtml}</td>
           <td>
-              <button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${c._id}"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger btn-sm btn-delete-camion" data-id="${c._id}"><i class="fas fa-trash"></i></button>
+              <button class="btn btn-secondary btn-sm btn-edit-camion" data-id="${
+                c._id
+              }"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger btn-sm btn-delete-camion" data-id="${
+                c._id
+              }"><i class="fas fa-trash"></i></button>
           </td>`;
       tbody.appendChild(row);
     });
@@ -549,7 +614,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function cargarCamiones() {
     const tablaBody = document.getElementById("tabla-camiones-body");
-    if (tablaBody) tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
+    if (tablaBody)
+      tablaBody.innerHTML = '<tr><td colspan="5">Cargando...</td></tr>';
     try {
       const response = await fetch(BACKEND_URL + "/api/camiones", {
         headers: { Authorization: `Bearer ${token}` },
@@ -558,7 +624,8 @@ document.addEventListener("DOMContentLoaded", () => {
       camionesCargados = await response.json();
       renderTablaCamiones(camionesCargados);
     } catch (e) {
-        if(tablaBody) tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${e.message}</td></tr>`;
+      if (tablaBody)
+        tablaBody.innerHTML = `<tr><td colspan="5" class="text-danger">${e.message}</td></tr>`;
     }
   }
 
@@ -566,33 +633,52 @@ document.addEventListener("DOMContentLoaded", () => {
   if (formSearchCamion) {
     formSearchCamion.addEventListener("submit", (e) => {
       e.preventDefault();
-      const placa = document.getElementById("search-camion-placa").value.toLowerCase();
-      const unidad = document.getElementById("search-camion-unidad").value.toLowerCase();
-      const modelo = document.getElementById("search-camion-modelo").value.toLowerCase();
-      const capacidad = document.getElementById("search-camion-capacidad").value;
+      const placa = document
+        .getElementById("search-camion-placa")
+        .value.toLowerCase();
+      const unidad = document
+        .getElementById("search-camion-unidad")
+        .value.toLowerCase();
+      const modelo = document
+        .getElementById("search-camion-modelo")
+        .value.toLowerCase();
+      const capacidad = document.getElementById(
+        "search-camion-capacidad"
+      ).value;
       const estado = document.getElementById("search-camion-estado").value;
 
       const filtrados = camionesCargados.filter((c) => {
         const matchPlaca = !placa || c.placa.toLowerCase().includes(placa);
-        const matchUnidad = !unidad || c.numeroUnidad.toLowerCase().includes(unidad);
-        const matchModelo = !modelo || (c.modelo && c.modelo.toLowerCase().includes(modelo));
+        const matchUnidad =
+          !unidad || c.numeroUnidad.toLowerCase().includes(unidad);
+        const matchModelo =
+          !modelo || (c.modelo && c.modelo.toLowerCase().includes(modelo));
         // Comparación flexible de capacidad (si escriben 40, busca los de 40)
-        const matchCapacidad = !capacidad || (c.capacidad && c.capacidad.toString() === capacidad);
+        const matchCapacidad =
+          !capacidad || (c.capacidad && c.capacidad.toString() === capacidad);
         //const matchEstado = !estado || c.estado === estado;
 
         let matchEstado = true;
         if (estado === "Activo") {
-            // Consideramos activo si está En Servicio
-            matchEstado = c.estado === "En Servicio";
+          // Consideramos activo si está En Servicio
+          matchEstado = c.estado === "En Servicio";
         } else if (estado === "Inactivo") {
-            // Consideramos inactivo cualquier otra cosa
-            matchEstado = c.estado !== "En Servicio";
+          // Consideramos inactivo cualquier otra cosa
+          matchEstado = c.estado !== "En Servicio";
         }
 
-        return matchPlaca && matchUnidad && matchModelo && matchCapacidad && matchEstado;
+        return (
+          matchPlaca &&
+          matchUnidad &&
+          matchModelo &&
+          matchCapacidad &&
+          matchEstado
+        );
       });
       renderTablaCamiones(filtrados);
-      document.getElementById("search-camion-modal").classList.remove("modal-visible");
+      document
+        .getElementById("search-camion-modal")
+        .classList.remove("modal-visible");
     });
   }
 
@@ -609,7 +695,10 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const response = await fetch(BACKEND_URL + "/api/camiones", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (!response.ok) throw new Error("Error registrar");
@@ -617,7 +706,9 @@ document.addEventListener("DOMContentLoaded", () => {
         formRegistrarCamion.reset();
         cargarCamiones();
         inicializarDashboard();
-      } catch (error) { alert(error.message); }
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
@@ -639,7 +730,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-camion-placa").value = camion.placa;
     document.getElementById("edit-camion-unidad").value = camion.numeroUnidad;
     document.getElementById("edit-camion-modelo").value = camion.modelo || "";
-    document.getElementById("edit-camion-capacidad").value = camion.capacidad || "";
+    document.getElementById("edit-camion-capacidad").value =
+      camion.capacidad || "";
     modalCamion.classList.add("modal-visible");
   }
 
@@ -647,16 +739,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!confirm("¿Eliminar camión?")) return;
     try {
       const response = await fetch(`${BACKEND_URL}/api/camiones/${id}`, {
-        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("No se pudo eliminar");
       alert("¡Camión eliminado!");
       cargarCamiones();
       inicializarDashboard();
-    } catch (error) { alert(error.message); }
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
-  if (closeModalBtnCamion) closeModalBtnCamion.onclick = () => modalCamion.classList.remove("modal-visible");
+  if (closeModalBtnCamion)
+    closeModalBtnCamion.onclick = () =>
+      modalCamion.classList.remove("modal-visible");
 
   if (modalFormCamion) {
     modalFormCamion.addEventListener("submit", async (e) => {
@@ -671,7 +768,10 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const response = await fetch(`${BACKEND_URL}/api/camiones/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (!response.ok) throw new Error("Error actualizar");
@@ -679,7 +779,9 @@ document.addEventListener("DOMContentLoaded", () => {
         modalCamion.classList.remove("modal-visible");
         cargarCamiones();
         inicializarDashboard();
-      } catch (error) { alert(error.message); }
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
@@ -695,14 +797,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tablaBody) return;
     tablaBody.innerHTML = "";
     if (lista.length === 0) {
-      tablaBody.innerHTML = '<tr><td colspan="5">No se encontraron rutas.</td></tr>';
+      tablaBody.innerHTML =
+        '<tr><td colspan="5">No se encontraron rutas.</td></tr>';
       return;
     }
     lista.forEach((r) => {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${r.nombre}</td><td>${r.descripcion || "N/A"}</td><td><span class="badge ${r.activa ? "badge-admin" : "badge-conductor"}">${r.activa ? "Activa" : "Inactiva"}</span></td>
-      <td><button class="btn btn-secondary btn-sm btn-edit-ruta" data-id="${r._id}"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-ruta" data-id="${r._id}"><i class="fas fa-trash"></i></button></td>
-      <td><button class="btn btn-primary btn-sm btn-edit-mapa-ruta" data-id="${r._id}"><i class="fas fa-map-marked-alt"></i> Editar Trazado</button></td>`;
+      row.innerHTML = `<td>${r.nombre}</td><td>${
+        r.descripcion || "N/A"
+      }</td><td><span class="badge ${
+        r.activa ? "badge-admin" : "badge-conductor"
+      }">${r.activa ? "Activa" : "Inactiva"}</span></td>
+      <td><button class="btn btn-secondary btn-sm btn-edit-ruta" data-id="${
+        r._id
+      }"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm btn-delete-ruta" data-id="${
+        r._id
+      }"><i class="fas fa-trash"></i></button></td>
+      <td><button class="btn btn-primary btn-sm btn-edit-mapa-ruta" data-id="${
+        r._id
+      }"><i class="fas fa-map-marked-alt"></i> Editar Trazado</button></td>`;
       tablaBody.appendChild(row);
     });
   }
@@ -721,7 +834,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (formSearchRuta) {
     formSearchRuta.addEventListener("submit", (e) => {
       e.preventDefault();
-      const nombre = document.getElementById("search-ruta-nombre").value.toLowerCase();
+      const nombre = document
+        .getElementById("search-ruta-nombre")
+        .value.toLowerCase();
       const activaVal = document.getElementById("search-ruta-activa").value;
       const filtrados = rutasCargadas.filter((r) => {
         const matchName = !nombre || r.nombre.toLowerCase().includes(nombre);
@@ -732,7 +847,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return matchName && matchActive;
       });
       renderTablaRutas(filtrados);
-      document.getElementById("search-ruta-modal").classList.remove("modal-visible");
+      document
+        .getElementById("search-ruta-modal")
+        .classList.remove("modal-visible");
     });
   }
 
@@ -743,19 +860,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const datos = {
         nombre: document.getElementById("ruta-nombre").value,
         descripcion: document.getElementById("ruta-descripcion").value,
-        tiempoEstimadoTotal: document.getElementById("ruta-tiempo").value
+        tiempoEstimadoTotal: document.getElementById("ruta-tiempo").value,
       };
       try {
         const response = await fetch(BACKEND_URL + "/api/rutas", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (!response.ok) throw new Error("Error al registrar");
         alert("¡Ruta registrada!");
         formRegistrarRuta.reset();
         cargarRutas();
-      } catch (error) { alert(error.message); }
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
@@ -781,24 +903,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!confirm("¿Eliminar ruta?")) return;
     try {
       const response = await fetch(`${BACKEND_URL}/api/rutas/${id}`, {
-        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Error eliminar");
       alert("¡Ruta eliminada!");
       cargarRutas();
-    } catch (error) { alert(error.message); }
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
   function openEditRutaModal(ruta) {
     document.getElementById("edit-ruta-id").value = ruta._id;
     document.getElementById("edit-ruta-nombre").value = ruta.nombre;
-    document.getElementById("edit-ruta-descripcion").value = ruta.descripcion || "";
-    document.getElementById("edit-ruta-tiempo").value = ruta.tiempoEstimadoTotal || "";
+    document.getElementById("edit-ruta-descripcion").value =
+      ruta.descripcion || "";
+    document.getElementById("edit-ruta-tiempo").value =
+      ruta.tiempoEstimadoTotal || "";
     document.getElementById("edit-ruta-activa").value = ruta.activa;
     modalRuta.classList.add("modal-visible");
   }
 
-  if (closeModalBtnRuta) closeModalBtnRuta.onclick = () => modalRuta.classList.remove("modal-visible");
+  if (closeModalBtnRuta)
+    closeModalBtnRuta.onclick = () =>
+      modalRuta.classList.remove("modal-visible");
 
   if (modalFormRuta) {
     modalFormRuta.addEventListener("submit", async (e) => {
@@ -813,21 +942,28 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const response = await fetch(`${BACKEND_URL}/api/rutas/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (!response.ok) throw new Error("Error actualizar");
         alert("¡Ruta actualizada!");
         modalRuta.classList.remove("modal-visible");
         cargarRutas();
-      } catch (error) { alert(error.message); }
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
   // ============================================================
   //  7. CRUD HORARIOS
   // ============================================================
-  const formRegistrarHorario = document.getElementById("form-registrar-horario");
+  const formRegistrarHorario = document.getElementById(
+    "form-registrar-horario"
+  );
   const modalEditarHorario = document.getElementById("modal-editar-horario");
   const formEditarHorario = document.getElementById("form-editar-horario");
   const closeBtnHorario = modalEditarHorario?.querySelector(".close-button");
@@ -847,7 +983,10 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const res = await fetch(BACKEND_URL + "/api/horarios", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(datos),
         });
         if (res.ok) {
@@ -855,10 +994,12 @@ document.addEventListener("DOMContentLoaded", () => {
           formRegistrarHorario.reset();
           cargarHorarios();
         } else {
-            const d = await res.json();
-            alert("Error: " + d.message);
+          const d = await res.json();
+          alert("Error: " + d.message);
         }
-      } catch (error) { alert("Error conexión"); }
+      } catch (error) {
+        alert("Error conexión");
+      }
     });
   }
 
@@ -867,8 +1008,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tbody) return;
     tbody.innerHTML = "";
     if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No se encontraron horarios.</td></tr>';
-        return;
+      tbody.innerHTML =
+        '<tr><td colspan="6">No se encontraron horarios.</td></tr>';
+      return;
     }
     lista.forEach((h) => {
       const row = document.createElement("tr");
@@ -879,8 +1021,16 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${h.camionUnidad || '<span class="text-muted">--</span>'}</td>
         <td>${h.conductorNombre || '<span class="text-muted">--</span>'}</td>
         <td>
-            <button class="btn btn-secondary btn-sm btn-edit-horario" data-id="${h._id}" data-salida-id="${h.salidaId}"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-danger btn-sm btn-delete-horario" data-id="${h._id}" data-salida-id="${h.salidaId}"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-secondary btn-sm btn-edit-horario" data-id="${
+              h._id
+            }" data-salida-id="${
+        h.salidaId
+      }"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger btn-sm btn-delete-horario" data-id="${
+              h._id
+            }" data-salida-id="${
+        h.salidaId
+      }"><i class="fas fa-trash"></i></button>
         </td>`;
       tbody.appendChild(row);
     });
@@ -899,11 +1049,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- LÓGICA DE BÚSQUEDA DE HORARIOS CORREGIDA (VERSIÓN FINAL) ---
   // --- LÓGICA DE BÚSQUEDA DE HORARIOS (CORREGIDA Y UNIFICADA) ---
   const formSearchHorario = document.getElementById("form-search-horario");
-  
+
   if (formSearchHorario) {
     formSearchHorario.addEventListener("submit", (e) => {
       e.preventDefault();
-      
+
       // 1. Obtener valores de los campos (Con nombres claros)
       const selRuta = document.getElementById("search-horario-ruta");
       const selDia = document.getElementById("search-horario-dia");
@@ -916,63 +1066,83 @@ document.addEventListener("DOMContentLoaded", () => {
       const busquedaDia = selDia ? selDia.value : "";
       const busquedaHora = elHora ? elHora.value : ""; // Valor ej: "08:00"
       const busquedaCamion = selCamion ? selCamion.value.toLowerCase() : "";
-      const busquedaConductor = selConductor ? selConductor.value.toLowerCase() : "";
+      const busquedaConductor = selConductor
+        ? selConductor.value.toLowerCase()
+        : "";
 
       const filtrados = horariosCargados.filter((h) => {
         // A. Filtro Ruta
-        const matchRuta = !busquedaRuta || (h.rutaNombre && h.rutaNombre.toLowerCase().includes(busquedaRuta));
-        
+        const matchRuta =
+          !busquedaRuta ||
+          (h.rutaNombre && h.rutaNombre.toLowerCase().includes(busquedaRuta));
+
         // B. Filtro Día
-        const matchDia = !busquedaDia || (h.diaSemana === busquedaDia);
-        
+        const matchDia = !busquedaDia || h.diaSemana === busquedaDia;
+
         // C. Filtro Hora (CORREGIDO)
         let matchHora = true;
         if (busquedaHora) {
-            // Quitamos el cero inicial para comparar (ej: convierte "09:00" a "9:00")
-            const horaEnBD = h.hora ? h.hora.toString().replace(/^0+/, '') : "";
-            const horaBuscada = busquedaHora.toString().replace(/^0+/, '');
-            
-            // Verificamos si empieza igual (para que "9" encuentre "9:00" y "9:30")
-            matchHora = horaEnBD.startsWith(horaBuscada);
+          // Quitamos el cero inicial para comparar (ej: convierte "09:00" a "9:00")
+          const horaEnBD = h.hora ? h.hora.toString().replace(/^0+/, "") : "";
+          const horaBuscada = busquedaHora.toString().replace(/^0+/, "");
+
+          // Verificamos si empieza igual (para que "9" encuentre "9:00" y "9:30")
+          matchHora = horaEnBD.startsWith(horaBuscada);
         }
 
         // D. Filtro Camión
-        const matchCamion = !busquedaCamion || (h.camionUnidad && h.camionUnidad.toString().toLowerCase().includes(busquedaCamion));
+        const matchCamion =
+          !busquedaCamion ||
+          (h.camionUnidad &&
+            h.camionUnidad.toString().toLowerCase().includes(busquedaCamion));
 
         // E. Filtro Conductor
-        const matchConductor = !busquedaConductor || (h.conductorNombre && h.conductorNombre.toLowerCase().includes(busquedaConductor));
+        const matchConductor =
+          !busquedaConductor ||
+          (h.conductorNombre &&
+            h.conductorNombre.toLowerCase().includes(busquedaConductor));
 
-        return matchRuta && matchDia && matchHora && matchCamion && matchConductor;
+        return (
+          matchRuta && matchDia && matchHora && matchCamion && matchConductor
+        );
       });
 
       renderTablaHorarios(filtrados);
-      document.getElementById("search-horario-modal").classList.remove("modal-visible");
+      document
+        .getElementById("search-horario-modal")
+        .classList.remove("modal-visible");
     });
   }
 
   // --- EVENTO PARA ABRIR Y LLENAR EL MODAL DE BÚSQUEDA ---
   // Esto asegura que los selects se llenen ANTES de mostrar el modal
-  const btnOpenSearchHorario = document.querySelector("#btn-open-search-horario") || document.querySelector(".btn-open-search[data-target='horario']");
-  
+  const btnOpenSearchHorario =
+    document.querySelector("#btn-open-search-horario") ||
+    document.querySelector(".btn-open-search[data-target='horario']");
+
   if (btnOpenSearchHorario) {
-      btnOpenSearchHorario.addEventListener("click", () => {
-          popularDropdownsHorarios("buscar"); // <--- Esto llena los selects con NOMBRES
-          document.getElementById("search-horario-modal").classList.add("modal-visible");
-      });
+    btnOpenSearchHorario.addEventListener("click", () => {
+      popularDropdownsHorarios("buscar"); // <--- Esto llena los selects con NOMBRES
+      document
+        .getElementById("search-horario-modal")
+        .classList.add("modal-visible");
+    });
   }
 
-  document.getElementById("tabla-horarios-body")?.addEventListener("click", (e) => {
-    const btnEdit = e.target.closest(".btn-edit-horario");
-    const btnDelete = e.target.closest(".btn-delete-horario");
-    if (btnEdit) {
-      const { id, salidaId } = btnEdit.dataset;
-      abrirEditarHorario(id, salidaId);
-    }
-    if (btnDelete) {
-      const { id, salidaId } = btnDelete.dataset;
-      if (confirm("¿Eliminar horario?")) eliminarHorario(id, salidaId);
-    }
-  });
+  document
+    .getElementById("tabla-horarios-body")
+    ?.addEventListener("click", (e) => {
+      const btnEdit = e.target.closest(".btn-edit-horario");
+      const btnDelete = e.target.closest(".btn-delete-horario");
+      if (btnEdit) {
+        const { id, salidaId } = btnEdit.dataset;
+        abrirEditarHorario(id, salidaId);
+      }
+      if (btnDelete) {
+        const { id, salidaId } = btnDelete.dataset;
+        if (confirm("¿Eliminar horario?")) eliminarHorario(id, salidaId);
+      }
+    });
 
   // --- FUNCIÓN MEJORADA PARA LLENAR LISTAS (CREAR, EDITAR Y BUSCAR) ---
   async function popularDropdownsHorarios(modo = "crear") {
@@ -980,7 +1150,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // modo 'crear' -> id="horario-ruta"
     // modo 'editar' -> id="edit-horario-ruta"
     // modo 'buscar' -> id="search-horario-ruta"
-    
+
     let prefix = "horario";
     if (modo === "editar") prefix = "edit-horario";
     if (modo === "buscar") prefix = "search-horario";
@@ -993,15 +1163,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modo === "buscar" && selRuta && selRuta.options.length > 1) return;
 
     // Limpieza inicial
-    if (selRuta) selRuta.innerHTML = '<option value="">-- C a r g a n d o --</option>';
-    if (selCamion) selCamion.innerHTML = '<option value="">-- C a r g a n d o --</option>';
-    if (selConductor) selConductor.innerHTML = '<option value="">-- C a r g a n d o --</option>';
+    if (selRuta)
+      selRuta.innerHTML = '<option value="">-- C a r g a n d o --</option>';
+    if (selCamion)
+      selCamion.innerHTML = '<option value="">-- C a r g a n d o --</option>';
+    if (selConductor)
+      selConductor.innerHTML =
+        '<option value="">-- C a r g a n d o --</option>';
 
     try {
       const [resRutas, resCamiones, resConductores] = await Promise.all([
-        fetch(BACKEND_URL + "/api/rutas", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(BACKEND_URL + "/api/camiones", { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(BACKEND_URL + "/api/users", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(BACKEND_URL + "/api/rutas", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(BACKEND_URL + "/api/camiones", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(BACKEND_URL + "/api/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       const rutas = await resRutas.json();
@@ -1011,11 +1191,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 1. LLENAR RUTAS
       if (selRuta) {
-        selRuta.innerHTML = '<option value="">-- Todos / Seleccionar --</option>';
+        selRuta.innerHTML =
+          '<option value="">-- Todos / Seleccionar --</option>';
         rutas.forEach((r) => {
           if (r.activa) {
             // TRUCO: Si es búsqueda, usamos el NOMBRE como valor. Si es crear/editar, usamos el ID.
-            const valor = modo === "buscar" ? r.nombre : r._id; 
+            const valor = modo === "buscar" ? r.nombre : r._id;
             selRuta.innerHTML += `<option value="${valor}">${r.nombre}</option>`;
           }
         });
@@ -1023,27 +1204,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 2. LLENAR CAMIONES
       if (selCamion) {
-        selCamion.innerHTML = '<option value="">-- Todos / Seleccionar --</option>';
+        selCamion.innerHTML =
+          '<option value="">-- Todos / Seleccionar --</option>';
         camiones.forEach((c) => {
-          if (c.estado === "activo" || modo === "buscar") { // En búsqueda mostramos todos
-             const valor = modo === "buscar" ? c.numeroUnidad : c._id;
-             selCamion.innerHTML += `<option value="${valor}">${c.numeroUnidad} (${c.placa})</option>`;
+          if (c.estado === "activo" || modo === "buscar") {
+            // En búsqueda mostramos todos
+            const valor = modo === "buscar" ? c.numeroUnidad : c._id;
+            selCamion.innerHTML += `<option value="${valor}">${c.numeroUnidad} (${c.placa})</option>`;
           }
         });
       }
 
       // 3. LLENAR CONDUCTORES
       if (selConductor) {
-        selConductor.innerHTML = '<option value="">-- Todos / Seleccionar --</option>';
+        selConductor.innerHTML =
+          '<option value="">-- Todos / Seleccionar --</option>';
         conductores.forEach((c) => {
-             const valor = modo === "buscar" ? c.nombre : c._id;
-             selConductor.innerHTML += `<option value="${valor}">${c.nombre}</option>`;
+          const valor = modo === "buscar" ? c.nombre : c._id;
+          selConductor.innerHTML += `<option value="${valor}">${c.nombre}</option>`;
         });
       }
-
     } catch (e) {
       console.error(e);
-      if(selRuta) selRuta.innerHTML = '<option value="">Error al cargar</option>';
+      if (selRuta)
+        selRuta.innerHTML = '<option value="">Error al cargar</option>';
     }
   }
 
@@ -1055,29 +1239,43 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const horarioDoc = await res.json();
       const salida = horarioDoc.salidas.find((s) => s._id === salidaId);
-      
+
       document.getElementById("edit-horario-id").value = horarioId;
       document.getElementById("edit-salida-id").value = salidaId;
       editingSalidaId = salidaId;
       editingHorarioId = horarioId;
 
-      document.getElementById("edit-horario-ruta").value = horarioDoc.ruta._id || horarioDoc.ruta;
+      document.getElementById("edit-horario-ruta").value =
+        horarioDoc.ruta._id || horarioDoc.ruta;
       document.getElementById("edit-horario-dia").value = horarioDoc.diaSemana;
       document.getElementById("edit-horario-salida").value = salida.hora;
-      document.getElementById("edit-horario-camion").value = salida.camionAsignado || "";
-      document.getElementById("edit-horario-conductor").value = salida.conductorAsignado || "";
-      
+      document.getElementById("edit-horario-camion").value =
+        salida.camionAsignado || "";
+      document.getElementById("edit-horario-conductor").value =
+        salida.conductorAsignado || "";
+
       modalEditarHorario.classList.add("modal-visible");
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   async function eliminarHorario(horarioId, salidaId) {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/horarios/${horarioId}/salidas/${salidaId}`, {
-        method: "DELETE", headers: { Authorization: `Bearer ${token}` }
-      });
-      if(res.ok) { alert("¡Eliminado!"); cargarHorarios(); }
-    } catch(e){ alert(e.message); }
+      const res = await fetch(
+        `${BACKEND_URL}/api/horarios/${horarioId}/salidas/${salidaId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        alert("¡Eliminado!");
+        cargarHorarios();
+      }
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   if (formEditarHorario) {
@@ -1088,58 +1286,63 @@ document.addEventListener("DOMContentLoaded", () => {
         diaSemana: document.getElementById("edit-horario-dia").value,
         hora: document.getElementById("edit-horario-salida").value,
         camionAsignado: document.getElementById("edit-horario-camion").value,
-        conductorAsignado: document.getElementById("edit-horario-conductor").value,
+        conductorAsignado: document.getElementById("edit-horario-conductor")
+          .value,
       };
       try {
-        const res = await fetch(`${BACKEND_URL}/api/horarios/${editingHorarioId}/salidas/${editingSalidaId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(data),
-        });
-        if(res.ok) {
-            alert("✅ Actualizado");
-            modalEditarHorario.classList.remove("modal-visible");
-            cargarHorarios();
+        const res = await fetch(
+          `${BACKEND_URL}/api/horarios/${editingHorarioId}/salidas/${editingSalidaId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(data),
+          }
+        );
+        if (res.ok) {
+          alert("✅ Actualizado");
+          modalEditarHorario.classList.remove("modal-visible");
+          cargarHorarios();
         }
-      } catch(e) { alert("Error conexión"); }
+      } catch (e) {
+        alert("Error conexión");
+      }
     });
   }
 
-  if(closeBtnHorario) closeBtnHorario.onclick = () => modalEditarHorario.classList.remove("modal-visible");
-  window.cerrarModalEditarHorario = () => modalEditarHorario.classList.remove("modal-visible");
-
-  
-  botonesBusqueda.forEach(btn => {
-      btn.addEventListener("click", (e) => {
-          const tipo = btn.dataset.target; // Asumiendo que usas data-target="horario"
-          if (tipo === "horario" || btn.getAttribute('onclick')?.includes('horario')) {
-              // 👇 ESTO LLENA EL SELECTOR DE BÚSQUEDA
-              popularDropdownsHorarios("buscar");
-          }
-      });
-  });
+  if (closeBtnHorario)
+    closeBtnHorario.onclick = () =>
+      modalEditarHorario.classList.remove("modal-visible");
+  window.cerrarModalEditarHorario = () =>
+    modalEditarHorario.classList.remove("modal-visible");
 
   // 1. Icono de Estudiante
-const studentIconAdmin = L.divIcon({
+  const studentIconAdmin = L.divIcon({
     className: "student-marker-admin",
     html: `<div style="background-color: #0dcaf0; color: white; width: 25px; height: 25px; border-radius: 50%; border: 2px solid white; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);"><i class="fas fa-user"></i></div>`,
     iconSize: [25, 25],
-    iconAnchor: [12, 12]
-});
+    iconAnchor: [12, 12],
+  });
 
-// 2. Escuchar evento
-socket.on("studentWaiting", (data) => {
+  // 2. Escuchar evento
+  socket.on("studentWaiting", (data) => {
     console.log("Admin: Estudiante esperando", data);
 
-    const marker = L.marker([data.location.lat, data.location.lng], { icon: studentIconAdmin })
-        .addTo(map) // Asegúrate que tu variable de mapa se llame 'map'
-        .bindPopup(`<strong>Estudiante esperando</strong><br>Ruta: ${data.rutaId}`);
+    const marker = L.marker([data.location.lat, data.location.lng], {
+      icon: studentIconAdmin,
+    })
+      .addTo(map) // Asegúrate que tu variable de mapa se llame 'map'
+      .bindPopup(
+        `<strong>Estudiante esperando</strong><br>Ruta: ${data.rutaId}`
+      );
 
     // Limpiar después de 5 min
     setTimeout(() => {
-        if (map.hasLayer(marker)) map.removeLayer(marker);
+      if (map.hasLayer(marker)) map.removeLayer(marker);
     }, 300000);
-});
+  });
 
   // ============================================================
   //  8. EDITOR DE RUTAS (MAPA)
@@ -1153,132 +1356,175 @@ socket.on("studentWaiting", (data) => {
   const btnClearRefs = document.getElementById("btn-clear-refs");
   const btnModeTracing = document.getElementById("btn-mode-tracing");
   const btnModeStops = document.getElementById("btn-mode-stops");
-  
-  let editorMode = 'tracing'; 
+
+  let editorMode = "tracing";
   let editorMap = null;
   let arrayPuntosTrazado = [];
   let arrayPuntosParada = [];
-  let traceLayerGroup = L.layerGroup(); 
-  let stopsLayerGroup = L.layerGroup(); 
+  let traceLayerGroup = L.layerGroup();
+  let stopsLayerGroup = L.layerGroup();
   let marcadoresGuia = [];
 
-  if(btnModeTracing && btnModeStops) {
-      btnModeTracing.addEventListener("click", () => setEditorMode('tracing'));
-      btnModeStops.addEventListener("click", () => setEditorMode('stops'));
+  if (btnModeTracing && btnModeStops) {
+    btnModeTracing.addEventListener("click", () => setEditorMode("tracing"));
+    btnModeStops.addEventListener("click", () => setEditorMode("stops"));
   }
 
   function setEditorMode(mode) {
-      editorMode = mode;
-      if(mode === 'tracing') {
-          btnModeTracing.classList.add("active");
-          btnModeStops.classList.remove("active");
-          if(editorMap) editorMap.getContainer().style.cursor = "crosshair"; 
-      } else {
-          btnModeStops.classList.add("active");
-          btnModeTracing.classList.remove("active");
-          if(editorMap) editorMap.getContainer().style.cursor = "default";
-      }
+    editorMode = mode;
+    if (mode === "tracing") {
+      btnModeTracing.classList.add("active");
+      btnModeStops.classList.remove("active");
+      if (editorMap) editorMap.getContainer().style.cursor = "crosshair";
+    } else {
+      btnModeStops.classList.add("active");
+      btnModeTracing.classList.remove("active");
+      if (editorMap) editorMap.getContainer().style.cursor = "default";
+    }
   }
 
   function inicializarEditorMapa() {
     if (editorMap) return;
-    editorMap = L.map("ruta-map-editor").setView([initialLat, initialLng], initialZoom);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: "&copy; OpenStreetMap &copy; CARTO",
-    }).addTo(editorMap);
+    editorMap = L.map("ruta-map-editor").setView(
+      [initialLat, initialLng],
+      initialZoom
+    );
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution: "&copy; OpenStreetMap &copy; CARTO",
+      }
+    ).addTo(editorMap);
 
     traceLayerGroup.addTo(editorMap);
     stopsLayerGroup.addTo(editorMap);
 
     editorMap.on("click", (e) => {
       const { lat, lng } = e.latlng;
-      if (editorMode === 'tracing') {
-          arrayPuntosTrazado.push([lat, lng]);
-          dibujarTrazado(); 
+      if (editorMode === "tracing") {
+        arrayPuntosTrazado.push([lat, lng]);
+        dibujarTrazado();
       } else {
-          const nuevaParada = {
-              nombre: `Parada ${arrayPuntosParada.length + 1}`,
-              tipo: 'parada_oficial', 
-              ubicacion: { type: "Point", coordinates: [lng, lat] }
-          };
-          arrayPuntosParada.push(nuevaParada);
-          dibujarParadas();
+        const nuevaParada = {
+          nombre: `Parada ${arrayPuntosParada.length + 1}`,
+          tipo: "parada_oficial",
+          ubicacion: { type: "Point", coordinates: [lng, lat] },
+        };
+        arrayPuntosParada.push(nuevaParada);
+        dibujarParadas();
       }
       actualizarListaUI();
     });
   }
 
   function dibujarTrazado() {
-      traceLayerGroup.clearLayers(); 
-      if (arrayPuntosTrazado.length === 0) return;
-      L.polyline(arrayPuntosTrazado, { color: '#007bff', weight: 5, opacity: 0.7 }).addTo(traceLayerGroup);
+    traceLayerGroup.clearLayers();
+    if (arrayPuntosTrazado.length === 0) return;
+    L.polyline(arrayPuntosTrazado, {
+      color: "#007bff",
+      weight: 5,
+      opacity: 0.7,
+    }).addTo(traceLayerGroup);
 
-      const dotIcon = L.divIcon({ className: 'dot-marker', html: '', iconSize: [12, 12], iconAnchor: [6, 6] });
-      arrayPuntosTrazado.forEach((coords, index) => {
-          const marker = L.marker(coords, { icon: dotIcon, draggable: true });
-          marker.bindPopup(`<div style="text-align:center;"><small>Punto #${index + 1}</small><br><button onclick="borrarPuntoTrazo(${index})" class="btn btn-danger btn-sm">Eliminar</button></div>`);
-          marker.on('dragend', (e) => {
-              const newPos = e.target.getLatLng();
-              arrayPuntosTrazado[index] = [newPos.lat, newPos.lng];
-              dibujarTrazado();
-          });
-          marker.addTo(traceLayerGroup);
+    const dotIcon = L.divIcon({
+      className: "dot-marker",
+      html: "",
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    });
+    arrayPuntosTrazado.forEach((coords, index) => {
+      const marker = L.marker(coords, { icon: dotIcon, draggable: true });
+      marker.bindPopup(
+        `<div style="text-align:center;"><small>Punto #${
+          index + 1
+        }</small><br><button onclick="borrarPuntoTrazo(${index})" class="btn btn-danger btn-sm">Eliminar</button></div>`
+      );
+      marker.on("dragend", (e) => {
+        const newPos = e.target.getLatLng();
+        arrayPuntosTrazado[index] = [newPos.lat, newPos.lng];
+        dibujarTrazado();
       });
+      marker.addTo(traceLayerGroup);
+    });
   }
 
   function dibujarParadas() {
-      stopsLayerGroup.clearLayers(); 
-      const stopIcon = L.divIcon({ className: 'parada-marker', html: '<i class="fas fa-bus"></i>', iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -30] });
-      arrayPuntosParada.forEach((parada, index) => {
-          const [lng, lat] = parada.ubicacion.coordinates;
-          const marker = L.marker([lat, lng], { icon: stopIcon, draggable: true });
-          marker.bindPopup(`<div style="text-align:center;"><strong>${parada.nombre}</strong><br><button onclick="borrarParada(${index})" class="btn btn-danger btn-sm">Borrar</button></div>`);
-          marker.on('dragend', (e) => {
-              const newPos = e.target.getLatLng();
-              arrayPuntosParada[index].ubicacion.coordinates = [newPos.lng, newPos.lat];
-          });
-          marker.addTo(stopsLayerGroup);
+    stopsLayerGroup.clearLayers();
+    const stopIcon = L.divIcon({
+      className: "parada-marker",
+      html: '<i class="fas fa-bus"></i>',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -30],
+    });
+    arrayPuntosParada.forEach((parada, index) => {
+      const [lng, lat] = parada.ubicacion.coordinates;
+      const marker = L.marker([lat, lng], { icon: stopIcon, draggable: true });
+      marker.bindPopup(
+        `<div style="text-align:center;"><strong>${parada.nombre}</strong><br><button onclick="borrarParada(${index})" class="btn btn-danger btn-sm">Borrar</button></div>`
+      );
+      marker.on("dragend", (e) => {
+        const newPos = e.target.getLatLng();
+        arrayPuntosParada[index].ubicacion.coordinates = [
+          newPos.lng,
+          newPos.lat,
+        ];
       });
+      marker.addTo(stopsLayerGroup);
+    });
   }
 
   function actualizarListaUI() {
-      if(!listaParadasUI) return;
-      listaParadasUI.innerHTML = "";
-      const spanCountParadas = document.getElementById("count-paradas");
-      const spanCountTrazado = document.getElementById("count-trazado");
-      if(spanCountParadas) spanCountParadas.textContent = arrayPuntosParada.length;
-      if(spanCountTrazado) spanCountTrazado.textContent = arrayPuntosTrazado.length;
-      // (Aquí va tu lógica de renderizado de lista de paradas que ya tenías, resumida por espacio)
+    if (!listaParadasUI) return;
+    listaParadasUI.innerHTML = "";
+    const spanCountParadas = document.getElementById("count-paradas");
+    const spanCountTrazado = document.getElementById("count-trazado");
+    if (spanCountParadas)
+      spanCountParadas.textContent = arrayPuntosParada.length;
+    if (spanCountTrazado)
+      spanCountTrazado.textContent = arrayPuntosTrazado.length;
+    // (Aquí va tu lógica de renderizado de lista de paradas que ya tenías, resumida por espacio)
   }
 
-  window.borrarPuntoTrazo = (index) => { arrayPuntosTrazado.splice(index, 1); dibujarTrazado(); actualizarListaUI(); };
-  window.borrarParada = (index) => { arrayPuntosParada.splice(index, 1); dibujarParadas(); actualizarListaUI(); };
-  
+  window.borrarPuntoTrazo = (index) => {
+    arrayPuntosTrazado.splice(index, 1);
+    dibujarTrazado();
+    actualizarListaUI();
+  };
+  window.borrarParada = (index) => {
+    arrayPuntosParada.splice(index, 1);
+    dibujarParadas();
+    actualizarListaUI();
+  };
+
   function limpiarGuias() {
-      marcadoresGuia.forEach(m => editorMap.removeLayer(m));
-      marcadoresGuia = [];
-      if(inputRefOrigin) inputRefOrigin.value = "";
-      if(inputRefDest) inputRefDest.value = "";
-      // cerrarListas(); // Asegúrate de tener esta función si la usas
+    marcadoresGuia.forEach((m) => editorMap.removeLayer(m));
+    marcadoresGuia = [];
+    if (inputRefOrigin) inputRefOrigin.value = "";
+    if (inputRefDest) inputRefDest.value = "";
+    // cerrarListas(); // Asegúrate de tener esta función si la usas
   }
-  if(btnClearRefs) btnClearRefs.addEventListener("click", limpiarGuias);
+  if (btnClearRefs) btnClearRefs.addEventListener("click", limpiarGuias);
 
   window.openEditRutaMapaModal = (ruta) => {
     modalRutaMapa.classList.add("modal-visible");
     document.getElementById("edit-ruta-mapa-id").value = ruta._id;
     const tituloSpan = document.getElementById("nombre-ruta-editor");
     if (tituloSpan) tituloSpan.textContent = ruta.nombre;
-    
+
     const allPoints = ruta.paradas || [];
     arrayPuntosTrazado = [];
     arrayPuntosParada = [];
-    allPoints.forEach(p => {
-        const [lng, lat] = p.ubicacion.coordinates;
-        if (p.tipo === 'parada_oficial' || (p.nombre && p.nombre.toLowerCase().includes("parada"))) {
-            arrayPuntosParada.push(p);
-        } else {
-            arrayPuntosTrazado.push([lat, lng]);
-        }
+    allPoints.forEach((p) => {
+      const [lng, lat] = p.ubicacion.coordinates;
+      if (
+        p.tipo === "parada_oficial" ||
+        (p.nombre && p.nombre.toLowerCase().includes("parada"))
+      ) {
+        arrayPuntosParada.push(p);
+      } else {
+        arrayPuntosTrazado.push([lat, lng]);
+      }
     });
     limpiarGuias();
     setTimeout(() => {
@@ -1287,7 +1533,7 @@ socket.on("studentWaiting", (data) => {
       dibujarTrazado();
       dibujarParadas();
       actualizarListaUI();
-      setEditorMode('tracing');
+      setEditorMode("tracing");
     }, 100);
   };
 
@@ -1296,25 +1542,35 @@ socket.on("studentWaiting", (data) => {
       e.preventDefault();
       const id = document.getElementById("edit-ruta-mapa-id").value;
       const trazoParaGuardar = arrayPuntosTrazado.map((coords, i) => ({
-          nombre: `Punto ${i}`, tipo: 'trazo', ubicacion: { type: "Point", coordinates: [coords[1], coords[0]] } 
+        nombre: `Punto ${i}`,
+        tipo: "trazo",
+        ubicacion: { type: "Point", coordinates: [coords[1], coords[0]] },
       }));
-      const paradasParaGuardar = arrayPuntosParada.map(p => ({ ...p, tipo: 'parada_oficial' }));
+      const paradasParaGuardar = arrayPuntosParada.map((p) => ({
+        ...p,
+        tipo: "parada_oficial",
+      }));
       const payload = { paradas: [...trazoParaGuardar, ...paradasParaGuardar] };
 
       try {
         const response = await fetch(`${BACKEND_URL}/api/rutas/${id}/paradas`, {
-          method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(payload),
         });
         if (!response.ok) throw new Error("Error guardando");
         alert("¡Ruta guardada!");
         modalRutaMapa.classList.remove("modal-visible");
         cargarRutas();
-      } catch (error) { alert(error.message); }
+      } catch (error) {
+        alert(error.message);
+      }
     });
   }
 
- 
   // ============================================================
   //  BUSCADOR INTELIGENTE TIPO GOOGLE MAPS (Nominatim API)
   // ============================================================
@@ -1558,45 +1814,52 @@ socket.on("studentWaiting", (data) => {
       const response = await fetch(BACKEND_URL + "/api/notificaciones", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       // ✅ CORRECCIÓN: Guardamos en la variable global para que el buscador funcione
-      alertasCargadas = await response.json(); 
-      
+      alertasCargadas = await response.json();
+
       renderTablaAlertas(alertasCargadas);
     } catch (e) {
-        console.error("Error cargando alertas:", e);
+      console.error("Error cargando alertas:", e);
     }
   }
 
   // --- BÚSQUEDA DE ALERTAS (CORREGIDO) ---
   // --- LÓGICA DE BÚSQUEDA DE ALERTAS (CORREGIDA) ---
   const formSearchAlerta = document.getElementById("form-search-alerta");
-  
+
   if (formSearchAlerta) {
     formSearchAlerta.addEventListener("submit", (e) => {
       // 1. ESTA LÍNEA ES LA QUE EVITA LA RECARGA DE PÁGINA
-      e.preventDefault(); 
-      
+      e.preventDefault();
+
       // 2. Obtener valores
-      const unidad = document.getElementById("search-alerta-unidad").value.toLowerCase();
-      const tipo = document.getElementById("search-alerta-tipo").value.toLowerCase();
+      const unidad = document
+        .getElementById("search-alerta-unidad")
+        .value.toLowerCase();
+      const tipo = document
+        .getElementById("search-alerta-tipo")
+        .value.toLowerCase();
       const fechaInput = document.getElementById("search-alerta-fecha").value; // YYYY-MM-DD
 
       // 3. Filtrar
       const filtrados = alertasCargadas.filter((a) => {
         // Filtro Unidad
-        const matchUnidad = !unidad || (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
-        
+        const matchUnidad =
+          !unidad ||
+          (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
+
         // Filtro Tipo (Select)
-        const matchTipo = !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
-        
+        const matchTipo =
+          !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
+
         // Filtro Fecha (Compara solo la parte de la fecha, ignorando la hora)
         let matchFecha = true;
         if (fechaInput) {
-            // Convertimos la fecha de la alerta (ISO) a formato local YYYY-MM-DD para comparar
-            // Nota: Usamos split('T')[0] para tomar solo la fecha de la base de datos
-            const fechaAlerta = new Date(a.createdAt).toISOString().split('T')[0];
-            matchFecha = fechaAlerta === fechaInput;
+          // Convertimos la fecha de la alerta (ISO) a formato local YYYY-MM-DD para comparar
+          // Nota: Usamos split('T')[0] para tomar solo la fecha de la base de datos
+          const fechaAlerta = new Date(a.createdAt).toISOString().split("T")[0];
+          matchFecha = fechaAlerta === fechaInput;
         }
 
         return matchUnidad && matchTipo && matchFecha;
@@ -1604,19 +1867,22 @@ socket.on("studentWaiting", (data) => {
 
       // 4. Renderizar y cerrar
       renderTablaAlertas(filtrados);
-      document.getElementById("search-alerta-modal").classList.remove("modal-visible");
+      document
+        .getElementById("search-alerta-modal")
+        .classList.remove("modal-visible");
     });
   } else {
-      console.error("No se encontró el formulario 'form-search-alerta'. Revisa el HTML.");
+    console.error(
+      "No se encontró el formulario 'form-search-alerta'. Revisa el HTML."
+    );
   }
   // --- FUNCIÓN GENÉRICA PARA ABRIR/CERRAR MODALES DE BÚSQUEDA ---
   window.abrirModalBusqueda = function (tipo) {
-    if(tipo === 'horario') popularDropdownsHorarios('buscar');
-      const modal = document.getElementById(`search-${tipo}-modal`);
-      if (modal) modal.classList.add("modal-visible");
+    if (tipo === "horario") popularDropdownsHorarios("buscar");
+    const modal = document.getElementById(`search-${tipo}-modal`);
+    if (modal) modal.classList.add("modal-visible");
   };
 
-  
   // --- CIERRE MODALES GENERAL ---
   // window.onclick = (e) => {
   //     if(e.target.classList.contains("modal") || e.target.classList.contains("fullscreen-overlay")) {
@@ -1636,52 +1902,102 @@ socket.on("studentWaiting", (data) => {
       const form = e.target.closest("form");
       form.reset();
       e.target.closest(".modal").classList.remove("modal-visible");
-      if (form.id === "form-search-usuario") renderTablaUsuarios(usuariosCargados);
-      if (form.id === "form-search-camion") renderTablaCamiones(camionesCargados);
+      if (form.id === "form-search-usuario")
+        renderTablaUsuarios(usuariosCargados);
+      if (form.id === "form-search-camion")
+        renderTablaCamiones(camionesCargados);
       if (form.id === "form-search-ruta") renderTablaRutas(rutasCargadas);
-      if (form.id === "form-search-horario") renderTablaHorarios(horariosCargados);
+      if (form.id === "form-search-horario")
+        renderTablaHorarios(horariosCargados);
       if (form.id === "form-search-alerta") renderTablaAlertas(alertasCargadas);
     });
   });
 
   cargarDashboardStats();
 
-    // Actualizar cada 30 segundos automáticamente
-    setInterval(cargarDashboardStats, 30000);
+  // Actualizar cada 30 segundos automáticamente
+  setInterval(cargarDashboardStats, 30000);
 });
 
 async function cargarDashboardStats() {
-    try {
-        const token = localStorage.getItem("tecbus_token");
-        const res = await fetch(`${BACKEND_URL}/api/camiones/estadisticas/hoy`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+  try {
+    const token = localStorage.getItem("tecbus_token");
+    const res = await fetch(`${BACKEND_URL}/api/camiones/estadisticas/hoy`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-        if (res.ok) {
-            const data = await res.json();
-            
-            // 1. Actualizar Tarjetas (KPIs)
-            document.getElementById("kpi-total-km").textContent = `${data.resumen.totalKm} km`;
-            document.getElementById("kpi-max-speed").textContent = data.resumen.topVelocidad;
-            document.getElementById("kpi-active-units").textContent = data.resumen.totalUnidadesActivas;
+    if (res.ok) {
+      const data = await res.json();
 
-            // 2. Actualizar Tabla
-            const tbody = document.getElementById("stats-table-body");
-            tbody.innerHTML = ""; // Limpiar tabla
-            
-            data.detalles.forEach(d => {
-                const row = `
+      // 1. Actualizar Tarjetas (KPIs)
+      document.getElementById(
+        "kpi-total-km"
+      ).textContent = `${data.resumen.totalKm} km`;
+      document.getElementById("kpi-max-speed").textContent =
+        data.resumen.topVelocidad;
+      const kpiActiveUnits = document.getElementById("kpi-active-units");
+      if (kpiActiveUnits) {
+        kpiActiveUnits.textContent = data.resumen.totalUnidadesActivas;
+      }
+      // 2. Actualizar Tabla
+      const tbody = document.getElementById("stats-table-body");
+      tbody.innerHTML = ""; // Limpiar tabla
+
+      data.detalles.forEach((d) => {
+        const row = `
                     <tr>
                         <td><strong>${d.unidad}</strong></td>
                         <td>${d.km} km</td>
-                        <td style="${d.velMax > 90 ? 'color:red' : ''}">${d.velMax} km/h</td>
+                        <td style="${d.velMax > 90 ? "color:red" : ""}">${
+          d.velMax
+        } km/h</td>
                         <td>${d.actualizado}</td>
                     </tr>
                 `;
-                tbody.innerHTML += row;
-            });
-        }
-    } catch (error) {
-        console.error("Error cargando stats:", error);
+        tbody.innerHTML += row;
+      });
     }
+  } catch (error) {
+    console.error("Error cargando stats:", error);
+  }
 }
+// Función manual asignada directamente al botón
+window.filtrarAlertasManual = function () {
+  console.log("🚀 Iniciando filtrado manual...");
+
+  // Validamos que existan los datos
+  if (typeof alertasCargadas === "undefined") {
+    console.error("Error: alertasCargadas no está definido");
+    return;
+  }
+
+  const unidadEl = document.getElementById("search-alerta-unidad");
+  const tipoEl = document.getElementById("search-alerta-tipo");
+  const fechaEl = document.getElementById("search-alerta-fecha");
+
+  // Evitamos errores si algún input no existe
+  const unidad = unidadEl ? unidadEl.value.toLowerCase() : "";
+  const tipo = tipoEl ? tipoEl.value.toLowerCase() : "";
+  const fechaInput = fechaEl ? fechaEl.value : "";
+
+  const filtrados = alertasCargadas.filter((a) => {
+    const matchUnidad =
+      !unidad ||
+      (a.camionUnidad && a.camionUnidad.toLowerCase().includes(unidad));
+    const matchTipo =
+      !tipo || (a.titulo && a.titulo.toLowerCase().includes(tipo));
+
+    let matchFecha = true;
+    if (fechaInput && a.createdAt) {
+      const fechaAlerta = new Date(a.createdAt).toISOString().split("T")[0];
+      matchFecha = fechaAlerta === fechaInput;
+    }
+    return matchUnidad && matchTipo && matchFecha;
+  });
+
+  renderTablaAlertas(filtrados);
+
+  // Cerrar modal
+  const modal = document.getElementById("search-alerta-modal");
+  if (modal) modal.classList.remove("modal-visible");
+};

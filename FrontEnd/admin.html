@@ -24,16 +24,10 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/admin.css" />
     <script>
-      const BACKEND_URL =
-        location.hostname === "localhost" || location.hostname === "127.0.0.1"
-          ? "http://localhost:5000"
-          : `http://${location.hostname}:5000`;
-
-      const SOCKET_URL =
-        location.hostname === "localhost" || location.hostname === "127.0.0.1"
-          ? "http://localhost:5000"
-          : `http://${location.hostname}:5000`;
-    </script>
+  // ☁️ SIEMPRE conectar a Render (incluso desde mi PC local)
+  const BACKEND_URL = "https://tecbus-api.onrender.com";
+  const SOCKET_URL = "https://tecbus-api.onrender.com";
+</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   </head>
   <body>
@@ -481,47 +475,6 @@
           </div>
         </section>
 
-        <div id="search-alerta-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2><i class="fas fa-search"></i> Buscar Alerta</h2>
-            <form id="form-search-alerta">
-                
-                <div class="form-group">
-                    <label>Unidad / Camión</label>
-                    <select id="search-alerta-unidad">
-                        <option value="">-- Todos --</option>
-                        </select>
-                </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Tipo de Alerta</label>
-                        <select id="search-alerta-tipo">
-                            <option value="">-- Todos --</option>
-                            <option value="retraso">Retraso</option>
-                            <option value="accidente">Accidente</option>
-                            <option value="falla mecánica">Falla Mecánica</option>
-                            <option value="tráfico">Tráfico Pesado</option>
-                            <option value="emergencia médica">Emergencia Médica</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Fecha</label>
-                        <input type="date" id="search-alerta-fecha">
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
-                    <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
-                </div>
-            </form>
-        </div>
-      </div>
-
         <section id="configuracion" class="dashboard-section">
           <div class="form-container">
             <h3>Configuración del Sistema</h3>
@@ -796,7 +749,7 @@
                 </div>
                 
                 <div class="modal-actions">
-                    <button type="submit" class="btn btn-primary btn-grow">Buscar</button>
+                    <button type="button" class="btn btn-primary btn-grow" onclick="filtrarAlertasManual()">Buscar</button>
                     <button type="button" class="btn btn-secondary btn-reset-search btn-shrink">Limpiar</button>
                 </div>
             </form>

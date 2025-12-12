@@ -19,17 +19,13 @@
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/student.css" />
 
-    <script>
-      const BACKEND_URL =
-        location.hostname === "localhost" || location.hostname === "127.0.0.1"
-          ? "http://localhost:5000"
-          : `http://${location.hostname}:5000`;
-      const SOCKET_URL =
-        location.hostname === "localhost" || location.hostname === "127.0.0.1"
-          ? "http://localhost:5000"
-          : `http://${location.hostname}:5000`;
-    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <script>
+  // ☁️ SIEMPRE conectar a Render (incluso desde mi PC local)
+  const BACKEND_URL = "https://tecbus-api.onrender.com";
+  const SOCKET_URL = "https://tecbus-api.onrender.com";
+</script>
   </head>
 
   <body id="student-body">
