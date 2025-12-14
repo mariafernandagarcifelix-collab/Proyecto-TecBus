@@ -733,32 +733,35 @@ document.addEventListener("DOMContentLoaded", () => {
   async function actualizarEstadoConductor() {
     try {
       const statusMsgBox = document.querySelector(".students-count");
-      let unidad = null; // Variable para el filtro de horarios
+
+      // Variable temporal para guardar la unidad si la API /mi-unidad responde
+      let unidadDetectada = null;
 
       // --- 1. OBTENER CAMIÓN (INTENTO PRINCIPAL) ---
       const resCamion = await fetch(BACKEND_URL + "/api/camiones/mi-unidad", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Manejo de respuesta
+      // Si responde bien (200), guardamos los datos
       if (resCamion.ok) {
-        // SI HAY CAMIÓN RECONOCIDO POR LA API
         const dataCamion = await resCamion.json();
         if (dataCamion.camionId) {
-          MI_CAMION_ID = dataCamion.camionId; // <--- ID REAL DE LA BD
-          unidad = dataCamion.numeroUnidad;
+          MI_CAMION_ID = dataCamion.camionId; // <--- ID de la BD
+          unidadDetectada = dataCamion.numeroUnidad;
 
-          // Actualizar UI
+          // Actualizamos UI inmediatamente
           let textoCamion =
-            `Unidad ${unidad}` +
+            `Unidad ${unidadDetectada}` +
             (dataCamion.placa ? ` (${dataCamion.placa})` : "");
           if (headerDisplay) headerDisplay.textContent = textoCamion;
           if (busDisplay) busDisplay.textContent = textoCamion;
         }
       } else {
-        // SI LA API DICE 404, NO BORRAMOS EL ID INMEDIATAMENTE SI YA TENÍAMOS UNO
-        // Solo lo ponemos en null si realmente no estamos en una logica de viaje activo (se maneja más abajo)
-        console.warn("⚠️ API mi-unidad devolvió:", resCamion.status);
+        // Si da 404, NO ponemos MI_CAMION_ID en null todavía.
+        // Esperaremos a ver si el Horario nos salva.
+        console.warn(
+          "⚠️ API /mi-unidad devolvió 404. Intentando recuperar ID desde Horarios..."
+        );
       }
 
       // --- 2. OBTENER HORARIOS ---
@@ -798,9 +801,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const soyYo = infoCond && infoCond._id === (user._id || user.id);
         const nombreCoincide = h.conductorNombre === user.nombre;
 
-        // Si tenemos unidad detectada, comparamos, si no, confiamos en la asignación de conductor
-        const esMiCamion = unidad
-          ? String(h.camionUnidad) === String(unidad)
+        // Si la API detectó unidad, comparamos. Si no, nos basamos en el conductor.
+        const esMiCamion = unidadDetectada
+          ? String(h.camionUnidad) === String(unidadDetectada)
           : false;
 
         return esDia && (soyYo || esMiCamion || nombreCoincide);
@@ -843,41 +846,48 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // --- 4. ACTUALIZAR PANTALLA Y RECUPERAR ID ---
+      // --- 4. ACTUALIZAR PANTALLA ---
       if (viajeActivo) {
+        // =========================================================
+        // 🔥 CORRECCIÓN CRÍTICA PARA EL BOTÓN DE ALERTAS 🔥
+        // =========================================================
+        if (!MI_CAMION_ID) {
+          console.log(
+            "🛠️ Recuperando ID del camión desde el Horario Activo:",
+            viajeActivo
+          );
+
+          // Intentamos todas las formas posibles en las que el backend manda el camión
+          if (viajeActivo.camionId) {
+            MI_CAMION_ID = viajeActivo.camionId;
+          } else if (viajeActivo.camion && viajeActivo.camion._id) {
+            MI_CAMION_ID = viajeActivo.camion._id;
+          } else if (
+            viajeActivo.camion &&
+            typeof viajeActivo.camion === "string"
+          ) {
+            MI_CAMION_ID = viajeActivo.camion;
+          }
+
+          if (MI_CAMION_ID) {
+            console.log(
+              "✅ ¡ID RECUPERADO! Ahora el botón funcionará. ID:",
+              MI_CAMION_ID
+            );
+          } else {
+            console.error(
+              "❌ ERROR CRÍTICO: El horario activo no tiene el ID del camión (camionId o camion._id)"
+            );
+          }
+        }
+        // =========================================================
+
+        // Actualizar UI visual aunque la API fallara
         const textoUnidadActiva = `Unidad ${
           viajeActivo.camionUnidad || "Asignada"
         }`;
         if (headerDisplay) headerDisplay.textContent = textoUnidadActiva;
         if (busDisplay) busDisplay.textContent = textoUnidadActiva;
-
-        // >>>>> CORRECCIÓN CLAVE AQUÍ <<<<<
-        // Si MI_CAMION_ID es null (porque falló el fetch de mi-unidad), lo recuperamos del horario
-        if (!MI_CAMION_ID) {
-          // Intentamos extraer el ID de varias formas posibles según como venga del backend
-          if (viajeActivo.camion && viajeActivo.camion._id) {
-            MI_CAMION_ID = viajeActivo.camion._id; // Si viene populado
-          } else if (
-            viajeActivo.camion &&
-            typeof viajeActivo.camion === "string"
-          ) {
-            MI_CAMION_ID = viajeActivo.camion; // Si es solo el ID string
-          } else if (viajeActivo.camionId) {
-            MI_CAMION_ID = viajeActivo.camionId;
-          }
-
-          if (MI_CAMION_ID) {
-            console.log(
-              "🔄 ID de camión recuperado EXITOSAMENTE del horario:",
-              MI_CAMION_ID
-            );
-          } else {
-            console.error(
-              "❌ No se pudo recuperar ID del camión del objeto viaje:",
-              viajeActivo
-            );
-          }
-        }
 
         routeDisplay.textContent = viajeActivo.rutaNombre;
         iniciarGeolocalizacion();
@@ -908,8 +918,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } else {
         // --- CASO: FUERA DE SERVICIO ---
-        // Si no hay viaje activo y el fetch falló, entonces sí limpiamos el ID
-        if (resCamion.status === 404) {
+
+        // Solo ponemos NULL si NO hay viaje activo y la API falló
+        if (!resCamion.ok) {
           MI_CAMION_ID = null;
           if (headerDisplay) headerDisplay.textContent = "Sin Turno Activo";
           if (busDisplay) busDisplay.textContent = "Sin Turno Activo";
@@ -937,7 +948,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // 5. ACTUALIZAR BD
+      // 6. ACTUALIZAR BD
       gestionarEstadoBD(estadoActual);
     } catch (error) {
       console.error("Error estado conductor:", error);
