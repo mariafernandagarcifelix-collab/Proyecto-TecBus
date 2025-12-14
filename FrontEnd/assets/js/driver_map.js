@@ -85,11 +85,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- CORRECCIÓN 2: Escuchar al Servidor (ESP32) ---
   // Esta es la parte mágica que mueve el mapa cuando el ESP32 manda datos
   // --- CORRECCIÓN FINAL: ESCUCHAR, PERO CONSULTAR BD ---
- // --- VERSIÓN DE DIAGNÓSTICO PARA SOCKETS ---
+  // --- VERSIÓN DE DIAGNÓSTICO PARA SOCKETS ---
   // --- LÓGICA CORREGIDA: Consultar TODOS los camiones (Igual que Estudiante/Admin) ---
   socket.on("locationUpdate", async (data) => {
     // 1. Verificamos si la señal es relevante para nosotros
-    const esMiID = MI_CAMION_ID && String(data.camionId) === String(MI_CAMION_ID);
+    const esMiID =
+      MI_CAMION_ID && String(data.camionId) === String(MI_CAMION_ID);
     let esMiUnidad = false;
     if (headerDisplay && data.numeroUnidad) {
       esMiUnidad = headerDisplay.textContent.includes(data.numeroUnidad);
@@ -101,39 +102,54 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         // 2. CORRECCIÓN: Pedimos la lista COMPLETA de camiones (esta ruta SI existe y funciona)
         const response = await fetch(`${BACKEND_URL}/api/camiones`, {
-             headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (response.ok) {
-            const listaCamiones = await response.json();
-            
-            // 3. Buscamos NUESTRO camión en la lista
-            const camionDB = listaCamiones.find(c => c._id === MI_CAMION_ID || c.id === MI_CAMION_ID);
+          const listaCamiones = await response.json();
 
-            if (camionDB && camionDB.ubicacionActual && camionDB.ubicacionActual.coordinates) {
-                // MongoDB GeoJSON: coordinates [longitud, latitud]
-                const lngDB = camionDB.ubicacionActual.coordinates[0];
-                const latDB = camionDB.ubicacionActual.coordinates[1];
-                const velocidadDB = camionDB.velocidad || 0;
+          // 3. Buscamos NUESTRO camión en la lista
+          const camionDB = listaCamiones.find(
+            (c) => c._id === MI_CAMION_ID || c.id === MI_CAMION_ID
+          );
 
-                console.log(`✅ Ubicación sincronizada: [${latDB}, ${lngDB}]`);
+          if (
+            camionDB &&
+            camionDB.ubicacionActual &&
+            camionDB.ubicacionActual.coordinates
+          ) {
+            // MongoDB GeoJSON: coordinates [longitud, latitud]
+            const lngDB = camionDB.ubicacionActual.coordinates[0];
+            const latDB = camionDB.ubicacionActual.coordinates[1];
+            const velocidadDB = camionDB.velocidad || 0;
 
-                const newLatLng = new L.LatLng(latDB, lngDB);
+            console.log(`✅ Ubicación sincronizada: [${latDB}, ${lngDB}]`);
 
-                // 4. Mover el marcador
-                driverMarker.setLatLng(newLatLng);
-                driverMarker.bindPopup(`📍 Ubicación Real (BD)<br>🚀 ${Math.round(velocidadDB)} km/h`).openPopup();
-                
-                map.panTo(newLatLng);
-                verificarLlegadaDestino(latDB, lngDB);
-            } else {
-                console.warn("⚠️ Mi camión fue encontrado pero no tiene coordenadas en BD.");
-            }
+            const newLatLng = new L.LatLng(latDB, lngDB);
+
+            // 4. Mover el marcador
+            driverMarker.setLatLng(newLatLng);
+            driverMarker
+              .bindPopup(
+                `📍 Ubicación Real (BD)<br>🚀 ${Math.round(velocidadDB)} km/h`
+              )
+              .openPopup();
+
+            map.panTo(newLatLng);
+            verificarLlegadaDestino(latDB, lngDB);
+          } else {
+            console.warn(
+              "⚠️ Mi camión fue encontrado pero no tiene coordenadas en BD."
+            );
+          }
         } else {
-             console.error("❌ Error al obtener lista de camiones:", response.status);
+          console.error(
+            "❌ Error al obtener lista de camiones:",
+            response.status
+          );
         }
       } catch (error) {
-          console.error("❌ Error de red consultando BD:", error);
+        console.error("❌ Error de red consultando BD:", error);
       }
     }
   });
@@ -224,10 +240,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // 2. Limpiar mapa anterior
-      if (rutaPolyline) map.removeLayer(rutaPolyline); 
+      if (rutaPolyline) map.removeLayer(rutaPolyline);
       if (routingControl) {
-          map.removeControl(routingControl);
-          routingControl = null;
+        map.removeControl(routingControl);
+        routingControl = null;
       }
 
       // 3. Obtener datos de la ruta
@@ -237,61 +253,76 @@ document.addEventListener("DOMContentLoaded", () => {
       const ruta = await response.json();
 
       if (ruta.paradas && ruta.paradas.length > 0) {
-        
         // Separar trazo de paradas
-        const puntosTrazo = ruta.paradas.filter(p => p.tipo === 'trazo');
-        const puntosParada = ruta.paradas.filter(p => p.tipo === 'parada_oficial' || !p.tipo);
+        const puntosTrazo = ruta.paradas.filter((p) => p.tipo === "trazo");
+        const puntosParada = ruta.paradas.filter(
+          (p) => p.tipo === "parada_oficial" || !p.tipo
+        );
 
         // --- CASO A: RUTA CON DISEÑO MANUAL (TRAZO) ---
         if (puntosTrazo.length > 0) {
-            console.log("🎨 Cargando ruta con diseño manual...");
-            
-            // Dibujamos la línea exactamente como la diseñaste
-            const coords = puntosTrazo.map(p => [p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]]);
-            
-            rutaPolyline = L.polyline(coords, {
-                color: "#007bff", // Color azul conductor
-                weight: 6,
-                opacity: 0.8
-            }).addTo(map);
+          console.log("🎨 Cargando ruta con diseño manual...");
 
-            // Marcar las paradas visualmente
-            puntosParada.forEach(p => {
-                 L.circleMarker([p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]], {
-                     radius: 6, color: 'white', fillColor: '#ffc107', fillOpacity: 1, weight: 2
-                 }).addTo(map).bindPopup(p.nombre);
-            });
+          // Dibujamos la línea exactamente como la diseñaste
+          const coords = puntosTrazo.map((p) => [
+            p.ubicacion.coordinates[1],
+            p.ubicacion.coordinates[0],
+          ]);
 
-            // Establecer destino (último punto del trazo)
-            const ultimo = coords[coords.length - 1];
-            DESTINO_ACTUAL = { lat: ultimo[0], lng: ultimo[1] };
-            map.fitBounds(rutaPolyline.getBounds());
-        } 
+          rutaPolyline = L.polyline(coords, {
+            color: "#007bff", // Color azul conductor
+            weight: 6,
+            opacity: 0.8,
+          }).addTo(map);
+
+          // Marcar las paradas visualmente
+          puntosParada.forEach((p) => {
+            L.circleMarker(
+              [p.ubicacion.coordinates[1], p.ubicacion.coordinates[0]],
+              {
+                radius: 6,
+                color: "white",
+                fillColor: "#ffc107",
+                fillOpacity: 1,
+                weight: 2,
+              }
+            )
+              .addTo(map)
+              .bindPopup(p.nombre);
+          });
+
+          // Establecer destino (último punto del trazo)
+          const ultimo = coords[coords.length - 1];
+          DESTINO_ACTUAL = { lat: ultimo[0], lng: ultimo[1] };
+          map.fitBounds(rutaPolyline.getBounds());
+        }
         // --- CASO B: RUTA ANTIGUA (SIN TRAZO, SOLO PARADAS) ---
         else {
-             console.log("🗺️ Cargando ruta automática (OSRM)...");
-             const waypoints = puntosParada.map((p) =>
-                L.latLng(p.ubicacion.coordinates[1], p.ubicacion.coordinates[0])
-             );
+          console.log("🗺️ Cargando ruta automática (OSRM)...");
+          const waypoints = puntosParada.map((p) =>
+            L.latLng(p.ubicacion.coordinates[1], p.ubicacion.coordinates[0])
+          );
 
-             routingControl = L.Routing.control({
-                waypoints: waypoints,
-                router: L.Routing.osrmv1({
-                  serviceUrl: "https://router.project-osrm.org/route/v1",
-                  profile: "driving",
-                }),
-                lineOptions: {
-                  styles: [{ color: "#007bff", opacity: 0.8, weight: 6 }],
-                },
-                createMarker: function () { return null; },
-                addWaypoints: false,
-                draggableWaypoints: false,
-                fitSelectedRoutes: true,
-                show: false,
-              }).addTo(map);
-              
-             const ultimoPunto = waypoints[waypoints.length - 1];
-             DESTINO_ACTUAL = { lat: ultimoPunto.lat, lng: ultimoPunto.lng };
+          routingControl = L.Routing.control({
+            waypoints: waypoints,
+            router: L.Routing.osrmv1({
+              serviceUrl: "https://router.project-osrm.org/route/v1",
+              profile: "driving",
+            }),
+            lineOptions: {
+              styles: [{ color: "#007bff", opacity: 0.8, weight: 6 }],
+            },
+            createMarker: function () {
+              return null;
+            },
+            addWaypoints: false,
+            draggableWaypoints: false,
+            fitSelectedRoutes: true,
+            show: false,
+          }).addTo(map);
+
+          const ultimoPunto = waypoints[waypoints.length - 1];
+          DESTINO_ACTUAL = { lat: ultimoPunto.lat, lng: ultimoPunto.lng };
         }
 
         LLEGADA_DETECTADA = false;
@@ -305,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function inicializarSistema() {
     try {
       // --- DEFINICIÓN PREVIA PARA EVITAR EL CRASH ---
-      let dataCamion = null; 
+      let dataCamion = null;
 
       // A. Obtener Camión (Ruta Dinámica)
       const resCamion = await fetch(BACKEND_URL + "/api/camiones/mi-unidad", {
@@ -314,43 +345,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // --- MANEJO DEL ESTADO ---
       if (resCamion.status === 404) {
-          console.log("ℹ️ Conductor logueado, pero sin horario activo en este momento.");
-          MI_CAMION_ID = null;
-          
-          if (headerDisplay) headerDisplay.textContent = "Sin Turno Activo";
-          if (busDisplay) busDisplay.textContent = "Sin Turno Activo";
-          if (routeDisplay) routeDisplay.textContent = "--";
-          if (statusDisplay) {
-              statusDisplay.innerHTML = "● Esperando Horario";
-              statusDisplay.className = "status-indicator status-off";
-              statusDisplay.style.color = "gray";
-          }
-      } 
-      else if (!resCamion.ok) {
-         console.warn("⚠️ Error desconocido al pedir camión:", resCamion.status);
-         return; 
-      } 
-      else {
-          // Si encontró camión (Status 200)
-          dataCamion = await resCamion.json(); // ASIGNAMOS LA VARIABLE AQUÍ
-          let textoCamion = "Sin Unidad";
-          let unidad = null;
+        console.log(
+          "ℹ️ Conductor logueado, pero sin horario activo en este momento."
+        );
+        MI_CAMION_ID = null;
 
-          if (dataCamion.camionId) {
-            MI_CAMION_ID = dataCamion.camionId;
-            unidad = dataCamion.numeroUnidad;
-            textoCamion = `Unidad ${unidad}` + (dataCamion.placa ? ` (${dataCamion.placa})` : "");
-          }
+        if (headerDisplay) headerDisplay.textContent = "Sin Turno Activo";
+        if (busDisplay) busDisplay.textContent = "Sin Turno Activo";
+        if (routeDisplay) routeDisplay.textContent = "--";
+        if (statusDisplay) {
+          statusDisplay.innerHTML = "● Esperando Horario";
+          statusDisplay.className = "status-indicator status-off";
+          statusDisplay.style.color = "gray";
+        }
+      } else if (!resCamion.ok) {
+        console.warn("⚠️ Error desconocido al pedir camión:", resCamion.status);
+        return;
+      } else {
+        // Si encontró camión (Status 200)
+        dataCamion = await resCamion.json(); // ASIGNAMOS LA VARIABLE AQUÍ
+        let textoCamion = "Sin Unidad";
+        let unidad = null;
 
-          if (headerDisplay) headerDisplay.textContent = textoCamion;
-          if (busDisplay) busDisplay.textContent = textoCamion;
+        if (dataCamion.camionId) {
+          MI_CAMION_ID = dataCamion.camionId;
+          unidad = dataCamion.numeroUnidad;
+          textoCamion =
+            `Unidad ${unidad}` +
+            (dataCamion.placa ? ` (${dataCamion.placa})` : "");
+        }
 
-          if (dataCamion.ubicacionActual && dataCamion.ubicacionActual.coordinates) {
-              const [lng, lat] = dataCamion.ubicacionActual.coordinates;
-              const posInicial = new L.LatLng(lat, lng);
-              driverMarker.setLatLng(posInicial);
-              map.setView(posInicial, 15);
-          }
+        if (headerDisplay) headerDisplay.textContent = textoCamion;
+        if (busDisplay) busDisplay.textContent = textoCamion;
+
+        if (
+          dataCamion.ubicacionActual &&
+          dataCamion.ubicacionActual.coordinates
+        ) {
+          const [lng, lat] = dataCamion.ubicacionActual.coordinates;
+          const posInicial = new L.LatLng(lat, lng);
+          driverMarker.setLatLng(posInicial);
+          map.setView(posInicial, 15);
+        }
       }
 
       // B. Obtener TODOS los horarios del día
@@ -359,26 +395,43 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const todosHorarios = await resHorarios.json();
 
-      const dias = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+      const dias = [
+        "domingo",
+        "lunes",
+        "martes",
+        "miercoles",
+        "jueves",
+        "viernes",
+        "sabado",
+      ];
       const hoyBackend = {
-        lunes: "Lunes", martes: "Martes", miercoles: "Miércoles",
-        jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo",
+        lunes: "Lunes",
+        martes: "Martes",
+        miercoles: "Miércoles",
+        jueves: "Jueves",
+        viernes: "Viernes",
+        sabado: "Sábado",
+        domingo: "Domingo",
       }[dias[new Date().getDay()]];
 
       // Filtrar mis viajes de hoy
       MIS_VIAJES_HOY = todosHorarios.filter((h) => {
         const esHoy = h.diaSemana === hoyBackend;
-        const soyYo = h.infoConductor && h.infoConductor[0]?._id === (user._id || user.id);
-        
+        const soyYo =
+          h.infoConductor && h.infoConductor[0]?._id === (user._id || user.id);
+
         // --- CORRECCIÓN DEL CRASH AQUÍ ---
         // Verificamos si dataCamion existe antes de leer sus propiedades
-        const esMiCamion = dataCamion && String(h.camionUnidad) === String(dataCamion.numeroUnidad);
-        
+        const esMiCamion =
+          dataCamion &&
+          String(h.camionUnidad) === String(dataCamion.numeroUnidad);
+
         return esHoy && (soyYo || esMiCamion);
       });
 
       // Ordenar por hora
-      const horaAInt = (h) => parseInt(h.split(":")[0]) * 60 + parseInt(h.split(":")[1]);
+      const horaAInt = (h) =>
+        parseInt(h.split(":")[0]) * 60 + parseInt(h.split(":")[1]);
       MIS_VIAJES_HOY.sort((a, b) => horaAInt(a.hora) - horaAInt(b.hora));
 
       if (MIS_VIAJES_HOY.length === 0) {
@@ -411,7 +464,6 @@ document.addEventListener("DOMContentLoaded", () => {
       INDICE_VIAJE_ACTUAL = indiceEncontrado;
       cargarRutaActiva(MIS_VIAJES_HOY[INDICE_VIAJE_ACTUAL]);
       iniciarGeolocalizacion();
-
     } catch (error) {
       console.error("Error inicializando:", error);
     }
@@ -481,15 +533,15 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("perfil-email").textContent =
       user.email || "Sin correo";
     document.getElementById("perfil-id").textContent =
-      (user._id || user.id || "N/A");
+      user._id || user.id || "N/A";
 
     // --- MODIFICACIÓN INICIO ---
     // Verificamos si existe datos de conductor y si hay algo en 'licencia'
     let textoLicencia = "No registrada";
-    
+
     if (user.conductor && user.conductor.licencia) {
-        // Si hay una licencia (o pusiste "Si"), mostramos "Registrada"
-        textoLicencia = "Registrada";
+      // Si hay una licencia (o pusiste "Si"), mostramos "Registrada"
+      textoLicencia = "Registrada";
     }
 
     const elLicencia = document.getElementById("perfil-licencia");
@@ -661,7 +713,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Variables globales para evitar spam al servidor
-  let ULTIMO_ESTADO_REPORTADO = ""; 
+  let ULTIMO_ESTADO_REPORTADO = "";
 
   // Función auxiliar: Convertir "06:30" a minutos (390)
   function horaAEntero(horaStr) {
@@ -675,93 +727,89 @@ document.addEventListener("DOMContentLoaded", () => {
     let h = Math.floor(minutos / 60);
     const m = minutos % 60;
     h = h % 24;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   }
 
   async function actualizarEstadoConductor() {
     try {
       const statusMsgBox = document.querySelector(".students-count");
-      
-      // --- 1. DEFINICIÓN PREVIA PARA EVITAR EL CRASH ---
-      let unidad = null; 
+      let unidad = null; // Variable para el filtro de horarios
 
-      // --- 2. OBTENER CAMIÓN (INTENTO PRINCIPAL) ---
+      // --- 1. OBTENER CAMIÓN (INTENTO PRINCIPAL) ---
       const resCamion = await fetch(BACKEND_URL + "/api/camiones/mi-unidad", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
-      // Manejo del 404 (Sin turno por el momento)
-      if (resCamion.status === 404) {
-           MI_CAMION_ID = null;
-           // Ponemos esto por defecto, pero más abajo lo corregiremos si encontramos viaje
-           if (headerDisplay) headerDisplay.textContent = "Sin Turno Activo";
-           if (busDisplay) busDisplay.textContent = "Sin Turno Activo";
-           
-           if (routeDisplay) routeDisplay.textContent = "--";
-           if (statusDisplay) {
-               statusDisplay.textContent = "● Sin Asignación";
-               statusDisplay.style.color = "gray";
-           }
-           if(statusMsgBox) statusMsgBox.innerHTML = '<i class="fas fa-user-clock"></i> Esperando';
-           
-           // IMPORTANTE: Enviar estado en minúscula para evitar error de Mongoose
-           gestionarEstadoBD("inactivo");
-      }
-      else if (!resCamion.ok) {
-         console.warn("⚠️ Falló petición camión");
-         if(statusDisplay) {
-             statusDisplay.textContent = "⚠️ Error Conexión";
-             statusDisplay.style.color = "var(--color-error)";
-         }
-         return; 
+
+      // Manejo de respuesta
+      if (resCamion.ok) {
+        // SI HAY CAMIÓN RECONOCIDO POR LA API
+        const dataCamion = await resCamion.json();
+        if (dataCamion.camionId) {
+          MI_CAMION_ID = dataCamion.camionId; // <--- ID REAL DE LA BD
+          unidad = dataCamion.numeroUnidad;
+
+          // Actualizar UI
+          let textoCamion =
+            `Unidad ${unidad}` +
+            (dataCamion.placa ? ` (${dataCamion.placa})` : "");
+          if (headerDisplay) headerDisplay.textContent = textoCamion;
+          if (busDisplay) busDisplay.textContent = textoCamion;
+        }
       } else {
-         // SI HAY CAMIÓN (Status 200)
-         const dataCamion = await resCamion.json();
-         
-         if (dataCamion.camionId) {
-            MI_CAMION_ID = dataCamion.camionId;
-            unidad = dataCamion.numeroUnidad; // Guardamos para el filtro
-            let textoCamion = `Unidad ${unidad}` + (dataCamion.placa ? ` (${dataCamion.placa})` : "");
-            
-            if (headerDisplay) headerDisplay.textContent = textoCamion;
-            if (busDisplay) busDisplay.textContent = textoCamion;
-         }
+        // SI LA API DICE 404, NO BORRAMOS EL ID INMEDIATAMENTE SI YA TENÍAMOS UNO
+        // Solo lo ponemos en null si realmente no estamos en una logica de viaje activo (se maneja más abajo)
+        console.warn("⚠️ API mi-unidad devolvió:", resCamion.status);
       }
 
-      // --- 3. OBTENER HORARIOS ---
+      // --- 2. OBTENER HORARIOS ---
       const resHorarios = await fetch(BACKEND_URL + "/api/horarios", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (!resHorarios.ok) return;
 
       const todosHorarios = await resHorarios.json();
 
       // Filtrar horarios de HOY
-      const diasArr = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+      const diasArr = [
+        "domingo",
+        "lunes",
+        "martes",
+        "miercoles",
+        "jueves",
+        "viernes",
+        "sabado",
+      ];
       const hoyIndex = new Date().getDay();
-      const mapaDiasBackend = { 
-          lunes: "Lunes", martes: "Martes", miercoles: "Miércoles", 
-          jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo" 
+      const mapaDiasBackend = {
+        lunes: "Lunes",
+        martes: "Martes",
+        miercoles: "Miércoles",
+        jueves: "Jueves",
+        viernes: "Viernes",
+        sabado: "Sábado",
+        domingo: "Domingo",
       };
       const hoyFormatted = mapaDiasBackend[diasArr[hoyIndex]];
 
-      const salidasHoy = todosHorarios.filter(h => {
-          const esDia = h.diaSemana === hoyFormatted;
-          const infoCond = h.infoConductor && h.infoConductor[0];
-          const soyYo = infoCond && infoCond._id === (user._id || user.id);
-          
-          // Verificamos si 'unidad' tiene valor antes de comparar para no crashear
-          const esMiCamion = unidad && String(h.camionUnidad) === String(unidad);
-          const nombreCoincide = h.conductorNombre === user.nombre; 
-          
-          return esDia && (soyYo || esMiCamion || nombreCoincide);
+      const salidasHoy = todosHorarios.filter((h) => {
+        const esDia = h.diaSemana === hoyFormatted;
+        const infoCond = h.infoConductor && h.infoConductor[0];
+        const soyYo = infoCond && infoCond._id === (user._id || user.id);
+        const nombreCoincide = h.conductorNombre === user.nombre;
+
+        // Si tenemos unidad detectada, comparamos, si no, confiamos en la asignación de conductor
+        const esMiCamion = unidad
+          ? String(h.camionUnidad) === String(unidad)
+          : false;
+
+        return esDia && (soyYo || esMiCamion || nombreCoincide);
       });
 
       // Ordenar por hora
       salidasHoy.sort((a, b) => horaAEntero(a.hora) - horaAEntero(b.hora));
 
-      // --- 4. LÓGICA DE ESTADO (TIME FRAME) ---
+      // --- 3. LÓGICA DE ESTADO (TIME FRAME) ---
       const now = new Date();
       const minutosActuales = now.getHours() * 60 + now.getMinutes();
 
@@ -771,104 +819,129 @@ document.addEventListener("DOMContentLoaded", () => {
       let esPreparacion = false;
 
       for (let i = 0; i < salidasHoy.length; i++) {
-          const viaje = salidasHoy[i];
-          const inicio = horaAEntero(viaje.hora);
-          const duracion = viaje.rutaDuracion || 45;
-          const fin = inicio + duracion;
+        const viaje = salidasHoy[i];
+        const inicio = horaAEntero(viaje.hora);
+        const duracion = viaje.rutaDuracion || 45;
+        const fin = inicio + duracion;
 
-          // A. ¿Estamos en PREPARACIÓN? (ej. 15 mins antes)
-          if (minutosActuales >= (inicio - 15 ) && minutosActuales < inicio) {
-              viajeActivo = viaje;
-              viajeActivo.horaFin = minutosAHora(fin);
-              esPreparacion = true; 
-              break; 
-          }
-          // B. ¿Estamos EN RUTA?
-          if (minutosActuales >= inicio && minutosActuales <= fin) {
-              viajeActivo = viaje;
-              viajeActivo.horaFin = minutosAHora(fin);
-              break; 
-          }
-          // C. Buscar el SIGUIENTE
-          if (minutosActuales < inicio && !viajeSiguiente) {
-              viajeSiguiente = viaje;
-          }
+        // A. ¿Estamos en PREPARACIÓN? (ej. 15 mins antes)
+        if (minutosActuales >= inicio - 15 && minutosActuales < inicio) {
+          viajeActivo = viaje;
+          viajeActivo.horaFin = minutosAHora(fin);
+          esPreparacion = true;
+          break;
+        }
+        // B. ¿Estamos EN RUTA?
+        if (minutosActuales >= inicio && minutosActuales <= fin) {
+          viajeActivo = viaje;
+          viajeActivo.horaFin = minutosAHora(fin);
+          break;
+        }
+        // C. Buscar el SIGUIENTE
+        if (minutosActuales < inicio && !viajeSiguiente) {
+          viajeSiguiente = viaje;
+        }
       }
 
-      // --- 5. ACTUALIZAR PANTALLA ---
+      // --- 4. ACTUALIZAR PANTALLA Y RECUPERAR ID ---
       if (viajeActivo) {
-          // >>> CORRECCIÓN VISUAL <<<
-          // Si estamos "En Servicio" o "Abordando", mostramos la unidad del horario
-          // aunque la API de /mi-unidad haya dado 404.
-          const textoUnidadActiva = `Unidad ${viajeActivo.camionUnidad || "Asignada"}`;
-          if (headerDisplay) headerDisplay.textContent = textoUnidadActiva;
-          if (busDisplay) busDisplay.textContent = textoUnidadActiva;
+        const textoUnidadActiva = `Unidad ${
+          viajeActivo.camionUnidad || "Asignada"
+        }`;
+        if (headerDisplay) headerDisplay.textContent = textoUnidadActiva;
+        if (busDisplay) busDisplay.textContent = textoUnidadActiva;
 
-          // Intentamos recuperar el ID del camión del horario para los sockets si no lo tenemos
-          if (!MI_CAMION_ID && (viajeActivo.camionId || viajeActivo.camionAsignado)) {
-               MI_CAMION_ID = viajeActivo.camionId || viajeActivo.camionAsignado;
-               console.log("🔄 ID de camión recuperado desde el horario:", MI_CAMION_ID);
+        // >>>>> CORRECCIÓN CLAVE AQUÍ <<<<<
+        // Si MI_CAMION_ID es null (porque falló el fetch de mi-unidad), lo recuperamos del horario
+        if (!MI_CAMION_ID) {
+          // Intentamos extraer el ID de varias formas posibles según como venga del backend
+          if (viajeActivo.camion && viajeActivo.camion._id) {
+            MI_CAMION_ID = viajeActivo.camion._id; // Si viene populado
+          } else if (
+            viajeActivo.camion &&
+            typeof viajeActivo.camion === "string"
+          ) {
+            MI_CAMION_ID = viajeActivo.camion; // Si es solo el ID string
+          } else if (viajeActivo.camionId) {
+            MI_CAMION_ID = viajeActivo.camionId;
           }
 
-          routeDisplay.textContent = viajeActivo.rutaNombre;
-          iniciarGeolocalizacion(); 
-
-          if(MI_RUTA_NOMBRE !== viajeActivo.rutaNombre) {
-              MI_RUTA_NOMBRE = viajeActivo.rutaNombre;
-              cargarRutaActiva(viajeActivo); 
-          }
-
-          if (esPreparacion) {
-              estadoActual = "Inicio de Recorridos"; 
-              statusDisplay.innerHTML = `● Preparando Salida (${viajeActivo.hora})`;
-              statusDisplay.className = "status-indicator status-on";
-              statusDisplay.style.color = "var(--color-warning)"; 
-              if(statusMsgBox) {
-                  statusMsgBox.innerHTML = '<i class="fas fa-clock"></i> Abordando';
-                  statusMsgBox.style.color = 'var(--color-warning)';
-              }
+          if (MI_CAMION_ID) {
+            console.log(
+              "🔄 ID de camión recuperado EXITOSAMENTE del horario:",
+              MI_CAMION_ID
+            );
           } else {
-              estadoActual = "En Servicio";
-              statusDisplay.innerHTML = `● En Ruta (Llegada: ${viajeActivo.horaFin})`;
-              statusDisplay.className = "status-indicator status-on";
-              statusDisplay.style.color = "var(--color-exito)"; 
-              if(statusMsgBox) {
-                  statusMsgBox.innerHTML = '<i class="fas fa-road"></i> En Ruta';
-                  statusMsgBox.style.color = 'var(--color-exito)';
-              }
+            console.error(
+              "❌ No se pudo recuperar ID del camión del objeto viaje:",
+              viajeActivo
+            );
           }
+        }
 
+        routeDisplay.textContent = viajeActivo.rutaNombre;
+        iniciarGeolocalizacion();
+
+        if (MI_RUTA_NOMBRE !== viajeActivo.rutaNombre) {
+          MI_RUTA_NOMBRE = viajeActivo.rutaNombre;
+          cargarRutaActiva(viajeActivo);
+        }
+
+        if (esPreparacion) {
+          estadoActual = "Inicio de Recorridos";
+          statusDisplay.innerHTML = `● Preparando Salida (${viajeActivo.hora})`;
+          statusDisplay.className = "status-indicator status-on";
+          statusDisplay.style.color = "var(--color-warning)";
+          if (statusMsgBox) {
+            statusMsgBox.innerHTML = '<i class="fas fa-clock"></i> Abordando';
+            statusMsgBox.style.color = "var(--color-warning)";
+          }
+        } else {
+          estadoActual = "En Servicio";
+          statusDisplay.innerHTML = `● En Ruta (Llegada: ${viajeActivo.horaFin})`;
+          statusDisplay.className = "status-indicator status-on";
+          statusDisplay.style.color = "var(--color-exito)";
+          if (statusMsgBox) {
+            statusMsgBox.innerHTML = '<i class="fas fa-road"></i> En Ruta';
+            statusMsgBox.style.color = "var(--color-exito)";
+          }
+        }
       } else {
-          // --- CASO: FUERA DE SERVICIO ---
-          // Aquí SI está bien que diga "Sin Turno Activo" si no hay camión conectado
-          statusDisplay.className = "status-indicator status-off";
-          statusDisplay.style.color = "var(--color-error)";
+        // --- CASO: FUERA DE SERVICIO ---
+        // Si no hay viaje activo y el fetch falló, entonces sí limpiamos el ID
+        if (resCamion.status === 404) {
+          MI_CAMION_ID = null;
+          if (headerDisplay) headerDisplay.textContent = "Sin Turno Activo";
+          if (busDisplay) busDisplay.textContent = "Sin Turno Activo";
+        }
 
-          if (viajeSiguiente) {
-              routeDisplay.textContent = "En Espera";
-              statusDisplay.innerHTML = `● Siguiente: ${viajeSiguiente.hora} (${viajeSiguiente.rutaNombre})`;
-              estadoActual = "En Espera"; 
-              if(statusMsgBox) {
-                  statusMsgBox.innerHTML = '<i class="fas fa-coffee"></i> En Espera';
-                  statusMsgBox.style.color = 'gray';
-              }
-          } else {
-              routeDisplay.textContent = "Jornada Finalizada";
-              statusDisplay.innerHTML = "● Fuera de Servicio";
-              estadoActual = "Fuera de Servicio";
-              if(statusMsgBox) {
-                  statusMsgBox.innerHTML = '<i class="fas fa-ban"></i> Terminado';
-                  statusMsgBox.style.color = 'var(--color-error)';
-              }
+        statusDisplay.className = "status-indicator status-off";
+        statusDisplay.style.color = "var(--color-error)";
+
+        if (viajeSiguiente) {
+          routeDisplay.textContent = "En Espera";
+          statusDisplay.innerHTML = `● Siguiente: ${viajeSiguiente.hora} (${viajeSiguiente.rutaNombre})`;
+          estadoActual = "En Espera";
+          if (statusMsgBox) {
+            statusMsgBox.innerHTML = '<i class="fas fa-coffee"></i> En Espera';
+            statusMsgBox.style.color = "gray";
           }
+        } else {
+          routeDisplay.textContent = "Jornada Finalizada";
+          statusDisplay.innerHTML = "● Fuera de Servicio";
+          estadoActual = "Fuera de Servicio";
+          if (statusMsgBox) {
+            statusMsgBox.innerHTML = '<i class="fas fa-ban"></i> Terminado';
+            statusMsgBox.style.color = "var(--color-error)";
+          }
+        }
       }
 
-      // 6. ACTUALIZAR BD
+      // 5. ACTUALIZAR BD
       gestionarEstadoBD(estadoActual);
-
     } catch (error) {
       console.error("Error estado conductor:", error);
-      if(statusDisplay) {
+      if (statusDisplay) {
         statusDisplay.textContent = "Error de Sistema";
         statusDisplay.style.color = "red";
       }
@@ -877,30 +950,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Nueva función para no saturar el servidor con PUTs repetidos
   async function gestionarEstadoBD(nuevoEstado) {
-      if (ULTIMO_ESTADO_REPORTADO !== nuevoEstado) {
-          try {
-              console.log(`🔄 Actualizando estado en BD: ${ULTIMO_ESTADO_REPORTADO} -> ${nuevoEstado}`);
-              
-              // Usamos el endpoint de usuarios existente
-              const userId = (user._id || user.id);
-              await fetch(`${BACKEND_URL}/api/users/${userId}`, {
-                  method: 'PUT',
-                  headers: { 
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}` 
-                  },
-                  // Solo actualizamos el estado, mantenemos el tipo conductor
-                  body: JSON.stringify({ 
-                      estado: nuevoEstado,
-                      tipo: "conductor" 
-                  })
-              });
-              
-              ULTIMO_ESTADO_REPORTADO = nuevoEstado;
-          } catch (e) {
-              console.error("Error sincronizando estado con BD", e);
-          }
+    if (ULTIMO_ESTADO_REPORTADO !== nuevoEstado) {
+      try {
+        console.log(
+          `🔄 Actualizando estado en BD: ${ULTIMO_ESTADO_REPORTADO} -> ${nuevoEstado}`
+        );
+
+        // Usamos el endpoint de usuarios existente
+        const userId = user._id || user.id;
+        await fetch(`${BACKEND_URL}/api/users/${userId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          // Solo actualizamos el estado, mantenemos el tipo conductor
+          body: JSON.stringify({
+            estado: nuevoEstado,
+            tipo: "conductor",
+          }),
+        });
+
+        ULTIMO_ESTADO_REPORTADO = nuevoEstado;
+      } catch (e) {
+        console.error("Error sincronizando estado con BD", e);
       }
+    }
   }
   // 7. REPORTAR INCIDENTE
   const incidentModal = document.getElementById("incident-modal");
@@ -909,7 +984,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const btnCloseIncident = incidentModal.querySelector(".close-button");
   if (btnCloseIncident) {
-    btnCloseIncident.onclick = () => incidentModal.classList.remove("modal-visible");
+    btnCloseIncident.onclick = () =>
+      incidentModal.classList.remove("modal-visible");
   }
 
   if (btnMainReporte) {
@@ -950,8 +1026,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // frontend/assets/js/driver_map.js
 
-// 1. Definir el Icono del Estudiante (Amarillo para resaltar)
-const studentIcon = L.divIcon({
+  // 1. Definir el Icono del Estudiante (Amarillo para resaltar)
+  const studentIcon = L.divIcon({
     className: "student-marker",
     html: `<div style="
         background-color: #ffc107; 
@@ -966,11 +1042,11 @@ const studentIcon = L.divIcon({
     </div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
-    popupAnchor: [0, -15]
-});
+    popupAnchor: [0, -15],
+  });
 
-// 2. Escuchar el evento cuando un estudiante dice "Estoy Aquí"
-socket.on("studentWaiting", (data) => {
+  // 2. Escuchar el evento cuando un estudiante dice "Estoy Aquí"
+  socket.on("studentWaiting", (data) => {
     // Opcional: Filtrar si solo quieres ver estudiantes de TU ruta actual
     // if (currentRutaId && data.rutaId !== currentRutaId) return;
 
@@ -981,20 +1057,24 @@ socket.on("studentWaiting", (data) => {
     // audio.play().catch(e => console.log("Audio bloqueado por navegador"));
 
     // Agregar marcador al mapa
-    const marker = L.marker([data.location.lat, data.location.lng], { icon: studentIcon })
-        .addTo(map)
-        .bindPopup(`
+    const marker = L.marker([data.location.lat, data.location.lng], {
+      icon: studentIcon,
+    })
+      .addTo(map)
+      .bindPopup(
+        `
             <strong>¡Parada Solicitada!</strong><br>
             <small>Hace un momento</small>
-        `)
-        .openPopup();
+        `
+      )
+      .openPopup();
 
     // AUTO-ELIMINAR: Quitar el marcador después de 5 minutos (300,000 ms)
     // para no llenar el mapa de puntos viejos.
     setTimeout(() => {
-        map.removeLayer(marker);
+      map.removeLayer(marker);
     }, 300000);
-});
+  });
 
   // 8. CERRAR SESIÓN
   const btnLogout = document.getElementById("logout-button");
@@ -1034,4 +1114,3 @@ socket.on("studentWaiting", (data) => {
   actualizarEstadoConductor();
   setInterval(actualizarEstadoConductor, 60000);
 });
-
