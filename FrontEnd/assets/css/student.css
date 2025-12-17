@@ -999,98 +999,112 @@ header {
     }
     .instruction-card { min-height: auto; }
 }
-/* Ajustes Generales para Móvil */
+/* --- AGREGAR AL FINAL DE student.css --- */
+
+/* TABLETS Y MOVILES (max-width: 768px) */
 @media screen and (max-width: 768px) {
     
-    /* Header Móvil */
-    header {
-        position: fixed;
-        width: 100%;
-        z-index: 1001;
-        padding: 10px 15px;
-        height: 60px;
+    /* 1. Ajuste del Sidebar (Menú lateral) */
+    #sidebar {
+        width: 85%; /* En vez de ancho fijo, ocupa casi toda la pantalla */
+        max-width: 300px;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* 2. Botón de menú hamburguesa */
+    #btn-menu-toggle {
+        top: 15px;
+        left: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem; /* Más grande para el dedo */
+    }
+
+    /* 3. Botones Flotantes (Estoy aquí, Historial) */
+    .map-overlay-buttons {
+        bottom: 20px;
+        right: 15px;
         display: flex;
-        align-items: center;
-        background: var(--color-primario, #007bff); /* Usa tu variable de color */
-        color: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .header-title h1 {
-        font-size: 1.1rem;
-        margin: 0;
-    }
-    .header-title p {
-        font-size: 0.8rem;
-        margin: 0;
-        opacity: 0.9;
+    .btn-float {
+        width: 50px;
+        height: 50px; /* Botones más fáciles de tocar */
+        font-size: 1.2rem;
     }
 
-    /* Sidebar Off-Canvas (Oculto por defecto) */
-    .sidebar {
-        position: fixed;
-        left: -280px; /* Esconder */
-        top: 0;
-        height: 100vh;
-        width: 260px;
-        z-index: 2000;
-        transition: 0.3s ease-in-out;
-        box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    /* Si el botón tiene texto, lo ocultamos en móvil para ahorrar espacio, o lo hacemos más pequeño */
+    #btn-estoy-aqui {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .sidebar.active {
-        left: 0; /* Mostrar al activar */
-    }
-
-    /* Botón de hamburguesa */
-    .menu-icon {
-        display: block !important;
-        font-size: 1.5rem;
-        margin-right: 15px;
-        cursor: pointer;
-    }
-
-    /* Ajuste del Mapa */
-    #map-container {
-        margin-left: 0; /* Quitar margen del sidebar */
-        width: 100%;
-        height: calc(100vh - 60px); /* Restar altura del header */
-        top: 60px;
-        position: relative;
-    }
-
-    /* Paneles Flotantes (Info de ruta, controles) */
-    .map-controls, .driver-info-panel, .action-panel {
-        position: absolute;
-        width: 90%; /* Más ancho en móvil */
-        left: 5%;
-        bottom: 20px; /* Pegado abajo */
-        top: auto;
-        padding: 15px;
-        border-radius: 15px;
-        background: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    }
-
-    /* Panel de acciones superior si existe */
-    .map-controls {
-        top: 10px;
-        bottom: auto;
-    }
-
-    /* Modales a pantalla completa o casi */
+    /* 4. Modales (Perfil, Historial) */
     .modal-content {
-        width: 95%;
-        margin: 10% auto;
+        width: 95%; /* Ocupar casi todo el ancho */
+        margin: 10% auto; /* Centrado vertical */
+        max-height: 85vh; /* Evitar que se salga de la pantalla */
+        overflow-y: auto; /* Scroll interno si es muy largo */
+        padding: 15px;
+    }
+
+    /* 5. Calendario Fullscreen */
+    #calendario-semanal {
+        grid-template-columns: 1fr; /* Una columna en vez de varias */
+        gap: 10px;
+    }
+    
+    .day-card {
+        min-height: auto; /* Altura flexible */
+    }
+}
+
+/* --- Arreglo Específico para Botones en Móvil --- */
+@media screen and (max-width: 768px) {
+    
+   .action-panel {
+        display: flex !important;
+        flex-direction: column; /* Un botón debajo del otro */
+        align-items: center;    /* ESTO centra los botones horizontalmente */
+        justify-content: center;
+        gap: 15px;              /* Espacio entre notificación e historial */
         padding: 20px;
     }
 
-    /* Calendario Responsivo */
-    .calendar-grid {
-        grid-template-columns: 1fr; /* Una columna */
+    /* Forzamos a AMBOS botones a ser del ancho total y más altos */
+    .action-panel .btn {
+        width: 100%;             /* Ocupar todo el ancho */
+        display: flex;           /* Para centrar ícono y texto */
+        justify-content: center; /* Centrado horizontal */
+        align-items: center;     /* Centrado vertical */
+        padding: 15px;           /* Más gorditos para el dedo */
+        font-size: 1rem;         /* Texto legible */
+        border-radius: 12px;     /* Bordes más redondeados se ven mejor en app */
     }
-    
-    .fullscreen-content {
-        padding: 15px;
+
+    /* Estilo específico para el botón de Notificar */
+    #btn-notificar {  /* Asegúrate de que este sea el ID de tu botón */
+        width: 80%;               /* Ancho cómodo, no toca los bordes (o pon 100% si prefieres) */
+        max-width: 300px;         /* Que no se haga gigante en tablets */
+        display: flex;            /* Flexbox para lo de adentro */
+        justify-content: center;  /* Centra el texto/ícono horizontalmente */
+        align-items: center;      /* Centra verticalmente */
+        margin: 0 auto;           /* Centrado extra de seguridad */
+        text-align: center;
+    }
+
+    /* Ajuste para el botón de historial para que combine */
+    #btn-ver-historial {
+        width: 80%;
+        max-width: 300px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 }
