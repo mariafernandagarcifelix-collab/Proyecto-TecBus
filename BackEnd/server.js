@@ -40,6 +40,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+const path = require("path");
+
 // 4. Conectar a la Base de Datos
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -53,8 +55,12 @@ mongoose
     console.error("❌ Error al conectar a MongoDB:", err.message);
   });
 
+// Servir archivos estáticos del FrontEnd
+app.use(express.static(path.join(__dirname, "../FrontEnd")));
+
 // 5. Rutas
-app.get("/", (req, res) => res.send("¡Servidor TecBus Activo!"));
+// (Comentamos la ruta raíz para que express.static sirva el index.html por defecto)
+// app.get("/", (req, res) => res.send("¡Servidor TecBus Activo!"));
 app.use("/api/auth", authRoutes);
 app.use("/api/camiones", camionRoutes);
 app.use("/api/rutas", rutaRoutes);
